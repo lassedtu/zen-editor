@@ -2,6 +2,12 @@
 #include <stdio.h>
 
 /**
+ * @file main.c
+ * @brief main entry point for the zen editor.
+ * this file contains the main function that initializes the editor, runs the main loop, and cleans up resources before exiting.
+ */
+
+/**
  * main entry point for the zen editor
  * @param argc argument count
  * @param argv argument vector

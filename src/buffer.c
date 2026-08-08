@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**
- * create a new buffer with one empty line.
- * @return pointer to the new buffer, or NULL on failure
- */
 Buffer *buffer_create(void)
 {
     Buffer *buf = malloc(sizeof(Buffer));
@@ -23,10 +19,6 @@ Buffer *buffer_create(void)
     return buf;
 }
 
-/**
- * free the memory used by a buffer and its lines
- * @param buf pointer to the buffer to free
- */
 void buffer_free(Buffer *buf)
 {
     if (!buf)
@@ -40,13 +32,6 @@ void buffer_free(Buffer *buf)
     free(buf);
 }
 
-/**
- * insert a character into a line at the specified position
- * @param buf pointer to the buffer
- * @param row the line number to insert into
- * @param col the column number to insert at
- * @param c the character to insert
- */
 void buffer_insert_char(Buffer *buf, int row, int col, char c)
 {
     if (row < 0 || row >= buf->num_lines)
@@ -64,12 +49,6 @@ void buffer_insert_char(Buffer *buf, int row, int col, char c)
     buf->modified = 1;
 }
 
-/**
- * delete a character from a line at the specified position
- * @param buf pointer to the buffer
- * @param row the line number to delete from
- * @param col the column number to delete at
- */
 void buffer_delete_char(Buffer *buf, int row, int col)
 {
     if (row < 0 || row >= buf->num_lines)
@@ -86,12 +65,6 @@ void buffer_delete_char(Buffer *buf, int row, int col)
     buf->modified = 1;
 }
 
-/**
- * insert a new line into the buffer at the specified position, splitting the current line if necessary
- * @param buf pointer to the buffer
- * @param row the line number to insert at
- * @param col the column number to split at
- */
 void buffer_insert_newline(Buffer *buf, int row, int col)
 {
     if (row < 0 || row >= buf->num_lines)
@@ -138,11 +111,6 @@ void buffer_insert_newline(Buffer *buf, int row, int col)
     buf->modified = 1;
 }
 
-/**
- * delete a line from the buffer at the specified position, merging it with the previous line if necessary
- * @param buf pointer to the buffer
- * @param row the line number to delete
- */
 void buffer_delete_line(Buffer *buf, int row)
 {
     if (row <= 0 || row >= buf->num_lines)
@@ -170,12 +138,6 @@ void buffer_delete_line(Buffer *buf, int row)
     buf->modified = 1;
 }
 
-/**
- * load a file into the buffer, replacing its current contents
- * @param buf pointer to the buffer
- * @param filename the path to the file to load
- * @return 0 on success, -1 on failure
- */
 int buffer_load(Buffer *buf, const char *filename)
 {
     int file_len = 0;
@@ -225,12 +187,6 @@ int buffer_load(Buffer *buf, const char *filename)
     return 0;
 }
 
-/**
- * save the buffer contents to a file
- * @param buf pointer to the buffer
- * @param filename the path to the file to save to
- * @return 0 on success, -1 on failure
- */
 int buffer_save(Buffer *buf, const char *filename)
 {
     /* calculate total size needed */

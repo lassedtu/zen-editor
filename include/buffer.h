@@ -1,46 +1,92 @@
 #ifndef ZE_BUFFER_H
 #define ZE_BUFFER_H
 
-/*
- * Text Buffer
+/**
+ * @file buffer.h
+ * @brief buffer data structure for text editing.
  *
- * Stores the contents of a file as an array of lines.
- * All text manipulation goes through this module.
+ * this file defines the Buffer and Line structures, along with functions to manipulate them.
  */
 
-typedef struct {
-    char *chars;
-    int len;
+/**
+ * @struct Line
+ * @brief represents a single line of text in the buffer.
+ */
+typedef struct
+{
+    char *chars; // pointer to the character array for this line
+    int len;     // length of the line (number of characters)
 } Line;
 
-typedef struct {
-    Line *lines;
-    int num_lines;
-    int modified;
+/**
+ * @struct Buffer
+ * @brief represents the entire text buffer, consisting of multiple lines.
+ */
+typedef struct
+{
+    Line *lines;   // pointer to an array of Line structures
+    int num_lines; // number of lines in the buffer
+    int modified;  // flag indicating if the buffer has been modified since last save
 } Buffer;
 
-/* Create a new empty buffer */
+/**
+ * @brief Create a new empty buffer.
+ * @return pointer to the newly created Buffer, or NULL on failure.
+ */
 Buffer *buffer_create(void);
 
-/* Free all memory associated with a buffer */
+/**
+ * @brief free all memory associated with a buffer.
+ * @param buf pointer to the Buffer to be freed.
+ */
 void buffer_free(Buffer *buf);
 
-/* Insert a character at (row, col) */
+/**
+ * @brief insert a character at the specified position in the buffer.
+ * @param buf pointer to the Buffer.
+ * @param row the row index where the character should be inserted.
+ * @param col the column index where the character should be inserted.
+ * @param c the character to insert.
+ */
 void buffer_insert_char(Buffer *buf, int row, int col, char c);
 
-/* Delete the character at (row, col) */
+/**
+ * @brief delete a character at the specified position in the buffer.
+ * @param buf pointer to the Buffer.
+ * @param row the row index of the character to delete.
+ * @param col the column index of the character to delete.
+ */
 void buffer_delete_char(Buffer *buf, int row, int col);
 
-/* Insert a new line by splitting the line at (row, col) */
+/**
+ * @brief insert a newline at the specified position in the buffer, splitting the line.
+ * @param buf pointer to the Buffer.
+ * @param row the row index where the newline should be inserted.
+ * @param col the column index where the newline should be inserted.
+ */
 void buffer_insert_newline(Buffer *buf, int row, int col);
 
-/* Delete a line and merge it with the previous line */
+/**
+ * @brief delete a line from the buffer, merging it with the previous line if applicable.
+ * @param buf pointer to the Buffer.
+ * @param row the row index of the line to delete.
+ */
 void buffer_delete_line(Buffer *buf, int row);
 
-/* Load file contents into the buffer */
+/**
+ * @brief load the contents of a file into the buffer, replacing any existing content.
+ * @param buf pointer to the Buffer.
+ * @param filename the name of the file to load.
+ * @return 0 on success, -1 on failure (e.g., file not found
+ */
 int buffer_load(Buffer *buf, const char *filename);
 
-/* Save buffer contents to a file */
+/**
+ * @brief save the contents of the buffer to a file.
+ * @param buf pointer to the Buffer.
+ * @param filename the name of the file to save to.
+ * @return 0 on success, -1 on failure (e.g., unable to write
+ */
 int buffer_save(Buffer *buf, const char *filename);
 
 #endif /* ZE_BUFFER_H */

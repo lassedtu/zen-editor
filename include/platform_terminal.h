@@ -1,35 +1,60 @@
 #ifndef ZE_PLATFORM_TERMINAL_H
 #define ZE_PLATFORM_TERMINAL_H
 
-/*
- * Platform Abstraction Layer — Terminal
+/**
+ * @file platform_terminal.h
+ * @brief platform-specific terminal operations.
  *
- * Provides an interface for terminal rendering and input.
- * Each platform backend must implement these functions.
+ * this file provides functions for initializing the terminal, reading input, and writing output in a platform-independent way.
  */
 
-/* Initialize the terminal for raw mode editing */
+/**
+ * @brief initialize the terminal for raw input and output.
+ * @return 0 on success, -1 on failure (e.g., unable to set
+ */
 int platform_terminal_init(void);
 
-/* Restore the terminal to its original state */
+/**
+ * @brief restore the terminal to its original state.
+ */
 void platform_terminal_cleanup(void);
 
-/* Get the current terminal dimensions */
+/**
+ * @brief get the current size of the terminal window.
+ * @param rows pointer to an integer where the number of rows will be stored.
+ * @param cols pointer to an integer where the number of columns will be stored.
+ * @return 0 on success, -1 on failure (e.g., unable to get terminal size).
+ */
 int platform_terminal_get_size(int *rows, int *cols);
 
-/* Clear the entire screen */
+/**
+ * @brief clear the terminal screen and move the cursor to the top-left corner.
+ */
 void platform_terminal_clear(void);
 
-/* Move the cursor to a specific position (0-indexed) */
+/**
+ * @brief move the cursor to the specified position in the terminal.
+ * @param row the row index to move the cursor to (0-based).
+ * @param col the column index to move the cursor to (0-based).
+ */
 void platform_terminal_move_cursor(int row, int col);
 
-/* Write a string to the terminal at the current cursor position */
+/**
+ * @brief write a string to the terminal.
+ * @param str pointer to the string to write.
+ * @param len the length of the string to write.
+ */
 void platform_terminal_write(const char *str, int len);
 
-/* Read a single keypress (blocking). Returns the key code. */
+/**
+ * @brief read a key press from the terminal.
+ * @return the key code of the pressed key, or -1 on failure (e.g, unable to read input).
+ */
 int platform_terminal_read_key(void);
 
-/* Flush all buffered output to the terminal */
+/**
+ * @brief flush any buffered output to the terminal.
+ */
 void platform_terminal_flush(void);
 
 #endif /* ZE_PLATFORM_TERMINAL_H */

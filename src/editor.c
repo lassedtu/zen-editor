@@ -4,16 +4,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* key definitions */
+// macro to convert control characters to their corresponding key codes
 #define KEY_CTRL(k) ((k) & 0x1f)
 
 /**
- * enumeration of special keys for the editor
- * @note these values are chosen to not conflict with ASCII values
+ * @enum EditorKey
+ * @brief special key codes for the editor.
  */
 enum EditorKey
 {
-    KEY_ARROW_UP = 1000,
+    KEY_ARROW_UP = 1000, // arbitrary starting value to avoid conflict with ASCII
     KEY_ARROW_DOWN,
     KEY_ARROW_LEFT,
     KEY_ARROW_RIGHT,
@@ -24,12 +24,6 @@ enum EditorKey
     KEY_DELETE
 };
 
-/**
- * initialize the editor state, including buffer, cursor, and terminal
- * @param ed pointer to the editor state
- * @param filename optional filename to load into the buffer
- * @return 0 on success, -1 on failure
- */
 int editor_init(Editor *ed, const char *filename)
 {
     ed->buffer = buffer_create();
@@ -60,7 +54,7 @@ int editor_init(Editor *ed, const char *filename)
 }
 
 /**
- * scroll the editor view to ensure the cursor is visible
+ * @brief scroll the editor view to ensure the cursor is visible
  * @param ed pointer to the editor state
  */
 static void editor_scroll(Editor *ed)
@@ -78,7 +72,7 @@ static void editor_scroll(Editor *ed)
 }
 
 /**
- * process a single key press and update the editor state accordingly
+ * @brief process a single key press and update the editor state accordingly
  * @param ed pointer to the editor state
  */
 static void editor_process_key(Editor *ed)
@@ -155,10 +149,6 @@ static void editor_process_key(Editor *ed)
     }
 }
 
-/**
- * run the main editor loop, handling input and rendering
- * @param ed pointer to the editor state
- */
 void editor_run(Editor *ed)
 {
     while (ed->running)
@@ -183,10 +173,6 @@ void editor_run(Editor *ed)
     }
 }
 
-/**
- * clean up the editor state, freeing resources and restoring terminal settings
- * @param ed pointer to the editor state
- */
 void editor_cleanup(Editor *ed)
 {
     platform_terminal_cleanup();
