@@ -1,4 +1,4 @@
-# ze (zen Editor)
+# ze (Zen Editor)
 > *Being developed with the help of [mashdtu](https://github.com/mashdtu).*
 
 A terminal-based text editor written in C, designed to be portable across operating systems.
