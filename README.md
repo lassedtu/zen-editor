@@ -45,15 +45,22 @@ The binary is output to `build/ze`.
 ze/
 ├── src/
 │   ├── main.c          Entry point
+│   ├── editor.c        Editor state and main loop
 │   ├── buffer.c        Text buffer (line storage, insert/delete)
 │   ├── cursor.c        Cursor movement and bounds checking
 │   ├── renderer.c      Screen drawing and scrolling
-│   └── editor.c        Editor state and main loop
-├── include/            Public headers and platform interfaces
+│   ├── command.c       Command execution
+│   └── keymap.c        Key-to-command translation
+├── include/
+│   ├── keys.h          Centralized key code definitions
+│   ├── command.h       Command types and execution
+│   ├── keymap.h        Key translation interface
+│   └── ...             Buffer, cursor, renderer, platform headers
 ├── platforms/
 │   ├── unix/           Unix terminal and filesystem backend
 │   └── ginnos/         ginnOS backend (future)
 ├── tests/
+├── docs/
 └── Makefile
 ```
 

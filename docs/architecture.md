@@ -6,10 +6,13 @@ This document describes the internal architecture of ze. The editor is split int
 
 ```
 ┌────────────────────────────────────────────────┐
-│                  Editor Core                   │
+│                  Editor Core                    │
 │  (buffer, cursor, renderer, editor loop)       │
 ├────────────────────────────────────────────────┤
-│             Platform Interface                 │
+│              Command Layer                      │
+│  (keys.h, keymap, command)                     │
+├────────────────────────────────────────────────┤
+│             Platform Interface                  │
 │  (platform_terminal.h, platform_fs.h)          │
 ├────────────────────────────────────────────────┤
 │          Platform Implementation               │
@@ -18,6 +21,8 @@ This document describes the internal architecture of ze. The editor is split int
 ```
 
 The core never includes OS-specific headers. It only calls functions declared in the platform interface headers. This means the same core compiles unchanged on any target — you swap only the platform backend.
+
+The command layer sits between raw input and state mutation. It translates key codes into abstract commands, then executes those commands against the editor state. This decoupling enables future undo/redo, configurable bindings, and macro replay.
 
 ## Core Modules
 
@@ -37,30 +42,40 @@ Draws the buffer contents and status bar to the terminal. Manages scrolling by a
 
 ### editor (editor.h / editor.c)
 
-Top-level state and main loop. The `Editor` struct ties together the buffer, cursor, screen dimensions, scroll offset, and filename. `editor_run()` is the main loop: 
-```
-scroll
-  |
-  V
-draw
-  |
-  V
-draw status
-  |
-  V
-reposition cursor
-  |
-  V
-flush
-  |
-  V
-read key
-  |
-  V
-process key
-```
+Top-level state and main loop. The `Editor` struct ties together the buffer, cursor, screen dimensions, scroll offset, and filename. `editor_run()` is the main loop: scroll → draw → draw status → reposition cursor → flush → read key → execute command.
 
-Key dispatch and editing commands currently live in the static `editor_process_key()` function.
+Input is read via `platform_terminal_read_key()`, translated through `keymap_translate()`, and executed by `editor_execute()`. The editor itself no longer contains key dispatch logic.
+
+## Command Layer
+
+The command layer decouples "what key was pressed" from "what action to perform." It consists of three files:
+
+### keys (keys.h)
+
+Centralized key code definitions. Both the platform terminal layer (which produces key codes) and the keymap layer (which consumes them) include this header as the single source of truth. Defines:
+
+- `KEY_CTRL(k)` macro for control key combinations.
+- `enum Key` with named constants for all special keys (arrows, home, end, page up/down, delete, backspace, enter, escape).
+
+### keymap (keymap.h / keymap.c)
+
+Translates raw key codes into abstract `Command` structs. The current mapping is hard-coded but isolated here so that future configurable bindings only need to change this file.
+
+### command (command.h / command.c)
+
+Defines `CommandType` (an enum of all possible editor actions) and the `Command` struct (type + optional character payload). Implements `editor_execute()`, which performs the corresponding state mutation for each command type.
+
+This is the future hook point for:
+- **Undo/redo:** record each executed command.
+- **Macros:** replay a sequence of commands.
+- **Configurable bindings:** swap the keymap without touching execution logic.
+
+### Input-to-action pipeline
+
+```
+platform_terminal_read_key()   →   keymap_translate()   →   editor_execute()
+       (raw key code)                  (Command)             (state mutation)
+```
 
 ## Platform Interface
 
@@ -117,7 +132,7 @@ No changes to core source or headers required.
 
 ## Data Flow
 
-A simplified view of one iteration of the current editor loop:
+A simplified view of one iteration of the editor loop:
 
 ```
 editor_run()
@@ -126,7 +141,10 @@ editor_run()
   ├── renderer_draw_status()       write status bar (buffered)
   ├── platform_terminal_move_cursor()  final cursor position (buffered)
   ├── platform_terminal_flush()    write all buffered output at once
-  └── editor_process_key()         read key, update buffer/cursor state
+  └── editor_process_key()
+        ├── platform_terminal_read_key()  read raw key code
+        ├── keymap_translate()            map to Command
+        └── editor_execute()              mutate editor state
 ```
 
 ## Build System

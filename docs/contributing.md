@@ -16,11 +16,29 @@ The binary is output to `build/ze`. The Makefile handles incremental rebuilds vi
 ## Project Layout
 
 ```
-src/            Core editor logic (platform-independent)
-include/        Public headers and platform interface declarations
-platforms/      Platform-specific implementations (one directory per target)
-tests/          Tests
-docs/           Documentation
+src/
+├── main.c          Entry point
+├── editor.c        Editor state and main loop
+├── buffer.c        Text buffer (line storage, insert/delete)
+├── cursor.c        Cursor movement and bounds checking
+├── renderer.c      Screen drawing and scrolling
+├── command.c       Command execution (state mutation)
+└── keymap.c        Key-to-command translation
+
+include/
+├── editor.h        Editor struct and lifecycle functions
+├── buffer.h        Buffer and Line structs, buffer operations
+├── cursor.h        Cursor struct and movement functions
+├── renderer.h      Rendering functions
+├── command.h       CommandType enum, Command struct, editor_execute()
+├── keymap.h        keymap_translate()
+├── keys.h          Centralized key code definitions
+├── platform_terminal.h   Terminal I/O interface
+└── platform_fs.h         Filesystem interface
+
+platforms/          Platform-specific implementations (one directory per target)
+tests/              Tests
+docs/               Documentation
 ```
 
 See [architecture.md](architecture.md) for how these layers interact.
