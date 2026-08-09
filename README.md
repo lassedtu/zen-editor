@@ -13,7 +13,7 @@ The editor core contains all text-editing logic and has no knowledge of the unde
 
 ```sh
 make                    # Build for current platform (defaults to unix)
-make PLATFORM=unix      # Explicitly build for Unix/macOS/Linux
+make PLATFORM=unix      # Explicitly build for specific platform
 make run                # Build and run
 make clean              # Remove build artifacts
 ```
@@ -71,6 +71,10 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [ ] Phase 8 — Search
 - [ ] Phase 9 — Configuration
 - [ ] Phase 10 — Syntax Highlighting
+
+## Contributing
+
+See [docs/contributing.md](docs/contributing.md) for coding style, documentation rules, and workflow guidelines. For a deeper look at how the codebase is structured, see [docs/architecture.md](docs/architecture.md).
 
 ## (Un)license
 
