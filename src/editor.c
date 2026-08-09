@@ -46,7 +46,10 @@ int editor_init(Editor *ed, const char *filename)
 
     if (filename)
     {
-        ed->filename = strdup(filename);
+        ed->filename = malloc(strlen(filename) + 1);
+        if (ed->filename != NULL) {
+            strcpy(ed->filename, filename);
+        }
         buffer_load(ed->buffer, filename);
     }
 
