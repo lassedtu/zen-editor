@@ -73,7 +73,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 3 — Cursor and Navigation
 - [x] Phase 4 — Rendering System
 - [x] Phase 5 — Filesystem Abstraction
-- [ ] Phase 6 — Editor Commands
+- [x] Phase 6 — Editor Commands
 - [ ] Phase 7 — Undo and Redo
 - [ ] Phase 8 — Search
 - [ ] Phase 9 — Configuration
