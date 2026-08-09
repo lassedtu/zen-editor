@@ -9,6 +9,7 @@
 
 /* test files are included here to allow auto-registration */
 #include "test_buffer.c"
+#include "test_cursor.c"
 
 int main(void)
 {
