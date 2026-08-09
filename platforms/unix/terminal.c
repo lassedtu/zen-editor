@@ -1,4 +1,5 @@
 #include "platform_terminal.h"
+#include "keys.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -152,19 +153,19 @@ int platform_terminal_read_key(void)
                     switch (seq[1])
                     {
                     case '1':
-                        return 1005; /* home */
+                        return KEY_HOME;
                     case '3':
-                        return 1008; /* delete */
+                        return KEY_DELETE;
                     case '4':
-                        return 1006; /* end */
+                        return KEY_END;
                     case '5':
-                        return 1007; /* page up */
+                        return KEY_PAGE_UP;
                     case '6':
-                        return 1007; /* page down */
+                        return KEY_PAGE_DOWN;
                     case '7':
-                        return 1005; /* home */
+                        return KEY_HOME;
                     case '8':
-                        return 1006; /* end */
+                        return KEY_END;
                     }
                 }
             }
@@ -173,17 +174,17 @@ int platform_terminal_read_key(void)
                 switch (seq[1])
                 {
                 case 'A':
-                    return 1000; /* up */
+                    return KEY_ARROW_UP;
                 case 'B':
-                    return 1001; /* down */
+                    return KEY_ARROW_DOWN;
                 case 'C':
-                    return 1003; /* right */
+                    return KEY_ARROW_RIGHT;
                 case 'D':
-                    return 1002; /* left */
+                    return KEY_ARROW_LEFT;
                 case 'H':
-                    return 1005; /* home */
+                    return KEY_HOME;
                 case 'F':
-                    return 1006; /* end */
+                    return KEY_END;
                 }
             }
         }

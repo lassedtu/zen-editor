@@ -1,28 +1,10 @@
 #include "editor.h"
+#include "command.h"
+#include "keymap.h"
 #include "renderer.h"
 #include "platform_terminal.h"
 #include <stdlib.h>
 #include <string.h>
-
-// macro to convert control characters to their corresponding key codes
-#define KEY_CTRL(k) ((k) & 0x1f)
-
-/**
- * @enum EditorKey
- * @brief special key codes for the editor.
- */
-enum EditorKey
-{
-    KEY_ARROW_UP = 1000, // arbitrary starting value to avoid conflict with ASCII
-    KEY_ARROW_DOWN,
-    KEY_ARROW_LEFT,
-    KEY_ARROW_RIGHT,
-    KEY_HOME,
-    KEY_END,
-    KEY_PAGE_UP,
-    KEY_PAGE_DOWN,
-    KEY_DELETE
-};
 
 int editor_init(Editor *ed, const char *filename)
 {
@@ -75,81 +57,14 @@ static void editor_scroll(Editor *ed)
 }
 
 /**
- * @brief process a single key press and update the editor state accordingly
- * @param ed pointer to the editor state
+ * @brief read a key and execute the corresponding command.
+ * @param ed pointer to the editor state.
  */
 static void editor_process_key(Editor *ed)
 {
     int key = platform_terminal_read_key();
-
-    switch (key)
-    {
-    case KEY_CTRL('q'):
-        ed->running = 0;
-        break;
-
-    case KEY_CTRL('s'):
-        if (ed->filename)
-        {
-            buffer_save(ed->buffer, ed->filename);
-        }
-        break;
-
-    case KEY_ARROW_UP:
-        cursor_move_up(&ed->cursor, ed->buffer);
-        break;
-    case KEY_ARROW_DOWN:
-        cursor_move_down(&ed->cursor, ed->buffer);
-        break;
-    case KEY_ARROW_LEFT:
-        cursor_move_left(&ed->cursor, ed->buffer);
-        break;
-    case KEY_ARROW_RIGHT:
-        cursor_move_right(&ed->cursor, ed->buffer);
-        break;
-
-    case KEY_HOME:
-        cursor_home(&ed->cursor);
-        break;
-    case KEY_END:
-        cursor_end(&ed->cursor, ed->buffer);
-        break;
-
-    case KEY_DELETE:
-        buffer_delete_char(ed->buffer, ed->cursor.row, ed->cursor.col);
-        break;
-
-    case 127: /* backspace */
-        if (ed->cursor.col > 0)
-        {
-            ed->cursor.col--;
-            buffer_delete_char(ed->buffer, ed->cursor.row, ed->cursor.col);
-        }
-        else if (ed->cursor.row > 0)
-        {
-            int prev_len = ed->buffer->lines[ed->cursor.row - 1].len;
-            buffer_delete_line(ed->buffer, ed->cursor.row);
-            ed->cursor.row--;
-            ed->cursor.col = prev_len;
-        }
-        break;
-
-    case '\r': /* enter */
-        buffer_insert_newline(ed->buffer, ed->cursor.row, ed->cursor.col);
-        ed->cursor.row++;
-        ed->cursor.col = 0;
-        break;
-
-    default:
-        /* insert printable characters */
-        if (key >= 32 && key < 127)
-        {
-            buffer_insert_char(ed->buffer, ed->cursor.row, ed->cursor.col,
-                               (char)key);
-            ed->cursor.col++;
-        }
-        break;
-    }
+    Command cmd = keymap_translate(key);
+    editor_execute(ed, cmd);
 }
 
 void editor_run(Editor *ed)

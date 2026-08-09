@@ -16,11 +16,29 @@ The binary is output to `build/ze`. The Makefile handles incremental rebuilds vi
 ## Project Layout
 
 ```
-src/            Core editor logic (platform-independent)
-include/        Public headers and platform interface declarations
-platforms/      Platform-specific implementations (one directory per target)
-tests/          Tests
-docs/           Documentation
+src/
+├── main.c          Entry point
+├── editor.c        Editor state and main loop
+├── buffer.c        Text buffer (line storage, insert/delete)
+├── cursor.c        Cursor movement and bounds checking
+├── renderer.c      Screen drawing and scrolling
+├── command.c       Command execution (state mutation)
+└── keymap.c        Key-to-command translation
+
+include/
+├── editor.h        Editor struct and lifecycle functions
+├── buffer.h        Buffer and Line structs, buffer operations
+├── cursor.h        Cursor struct and movement functions
+├── renderer.h      Rendering functions
+├── command.h       CommandType enum, Command struct, editor_execute()
+├── keymap.h        keymap_translate()
+├── keys.h          Centralized key code definitions
+├── platform_terminal.h   Terminal I/O interface
+└── platform_fs.h         Filesystem interface
+
+platforms/          Platform-specific implementations (one directory per target)
+tests/              Tests
+docs/               Documentation
 ```
 
 See [architecture.md](architecture.md) for how these layers interact.
@@ -183,3 +201,41 @@ Keep the first line under 72 characters. Add a blank line and a longer explanati
 1. `make clean && make` — ensure a clean build with no warnings.
 2. Run tests if they exist for the area you changed.
 3. Read through your diff. Remove debug prints, commented-out code, and unrelated changes.
+
+### Pull Request Descriptions
+
+Keep PR descriptions concise and structured. Include:
+
+1. **Summary** — one or two sentences explaining what the PR does and why.
+2. **New/changed files** — list the files added or significantly modified with a brief note on each.
+3. **Refactored** — if existing code was restructured, explain what changed and how.
+4. **What this enables** — if the change is groundwork for future features, list them.
+5. **Testing** — how the change was verified (build, manual testing, automated tests).
+
+Example:
+
+```
+Decouples key input from action execution by introducing a command
+abstraction layer. Every editor action is now represented as a Command,
+routed through a keymap translation step before execution.
+
+New/changed files
+- include/keys.h: single source of truth for all key codes
+- include/command.h / src/command.c: CommandType enum and editor_execute()
+- include/keymap.h / src/keymap.c: key-to-command translation
+
+Refactored
+- src/editor.c: replaced 70-line switch in editor_process_key with a
+  3-step pipeline: read_key -> keymap_translate -> editor_execute
+- platforms/unix/terminal.c: magic numbers replaced with named constants
+  from keys.h
+
+This let's us implement
+- Undo/redo (record commands as they execute)
+- Configurable key bindings (swap the keymap without touching execution)
+- Macros (replay a sequence of commands)
+
+Testing
+- Clean build with zero warnings (make clean && make)
+- Manual testing: all existing keybinds work as before
+```
