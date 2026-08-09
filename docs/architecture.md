@@ -6,13 +6,13 @@ This document describes the internal architecture of ze. The editor is split int
 
 ```
 ┌────────────────────────────────────────────────┐
-│                  Editor Core                    │
+│                  Editor Core                   │
 │  (buffer, cursor, renderer, editor loop)       │
 ├────────────────────────────────────────────────┤
-│              Command Layer                      │
+│              Command Layer                     │
 │  (keys.h, keymap, command)                     │
 ├────────────────────────────────────────────────┤
-│             Platform Interface                  │
+│             Platform Interface                 │
 │  (platform_terminal.h, platform_fs.h)          │
 ├────────────────────────────────────────────────┤
 │          Platform Implementation               │
