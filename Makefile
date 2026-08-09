@@ -2,11 +2,19 @@ CC     := cc
 CFLAGS := -Wall -Wextra -pedantic -std=c99 -Iinclude -MMD -MP
 LDFLAGS :=
 
-# platform (override with: make PLATFORM=ginnos)
+# platform (override with: make PLATFORM=windows)
 PLATFORM ?= unix
 
+# platform-specific toolchain overrides
+ifeq ($(PLATFORM),windows)
+    CC := x86_64-w64-mingw32-gcc
+    TARGET_EXT := .exe
+else
+    TARGET_EXT :=
+endif
+
 BUILD_DIR := build
-TARGET    := $(BUILD_DIR)/ze
+TARGET    := $(BUILD_DIR)/ze$(TARGET_EXT)
 
 # path mapping helpers
 src_c_to_obj   = $(patsubst %.c,$(BUILD_DIR)/%.o,$(1))
