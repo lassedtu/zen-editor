@@ -22,7 +22,7 @@ OBJS := $(call src_c_to_obj,$(SRCS))
 # dependency files
 DEP_FILES := $(OBJS:.o=.d)
 
-.PHONY: all clean run
+.PHONY: all clean run test
 
 all: $(TARGET)
 
@@ -40,6 +40,19 @@ clean:
 
 run: $(TARGET)
 	./$(TARGET)
+
+# testing
+TEST_CORE   := $(filter-out src/main.c,$(CORE_SRCS))
+TEST_ALL    := tests/test_main.c $(TEST_CORE) $(PLATFORM_SRCS)
+TEST_OBJS   := $(call src_c_to_obj,$(TEST_ALL))
+TEST_TARGET := $(BUILD_DIR)/ze_tests
+
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+$(TEST_TARGET): $(TEST_OBJS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -Itests -o $@ $(TEST_OBJS) $(LDFLAGS)
 
 # automatic header dependencies
 -include $(DEP_FILES)
