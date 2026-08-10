@@ -3,6 +3,27 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief ensure a line has at least `needed` bytes of capacity.
+ * @param line pointer to the Line to grow.
+ * @param needed minimum number of bytes required.
+ */
+static void line_ensure_cap(Line *line, int needed)
+{
+    // if the current capacity is sufficient, do nothing
+    if (needed <= line->cap)
+        return;
+
+    // double the capacity until it meets or exceeds the needed size
+    int new_cap = line->cap ? line->cap : 8;
+    while (new_cap < needed)
+        new_cap *= 2;
+
+    // reallocate the character array to the new capacity
+    line->chars = realloc(line->chars, new_cap);
+    line->cap = new_cap;
+}
+
 Buffer *buffer_create(void)
 {
     Buffer *buf = malloc(sizeof(Buffer));
@@ -13,6 +34,7 @@ Buffer *buffer_create(void)
     buf->lines = malloc(sizeof(Line));
     buf->lines[0].chars = NULL;
     buf->lines[0].len = 0;
+    buf->lines[0].cap = 0;
     buf->num_lines = 1;
     buf->modified = 0;
 
@@ -41,7 +63,7 @@ void buffer_insert_char(Buffer *buf, int row, int col, char c)
     if (col < 0 || col > line->len)
         return;
 
-    line->chars = realloc(line->chars, line->len + 1);
+    line_ensure_cap(line, line->len + 1);
     /* shift characters to the right */
     memmove(&line->chars[col + 1], &line->chars[col], line->len - col);
     line->chars[col] = c;
@@ -61,7 +83,6 @@ void buffer_delete_char(Buffer *buf, int row, int col)
     /* shift characters to the left */
     memmove(&line->chars[col], &line->chars[col + 1], line->len - col - 1);
     line->len--;
-    line->chars = realloc(line->chars, line->len);
     buf->modified = 1;
 }
 
@@ -94,18 +115,10 @@ void buffer_insert_newline(Buffer *buf, int row, int col)
     /* set up the new line with the tail content */
     buf->lines[row + 1].len = new_len;
     buf->lines[row + 1].chars = tail;
+    buf->lines[row + 1].cap = new_len;
 
-    /* truncate the original line */
+    /* truncate the original line — keep existing capacity for future edits */
     buf->lines[row].len = col;
-    if (col > 0)
-    {
-        buf->lines[row].chars = realloc(buf->lines[row].chars, col);
-    }
-    else
-    {
-        free(buf->lines[row].chars);
-        buf->lines[row].chars = NULL;
-    }
 
     buf->num_lines++;
     buf->modified = 1;
@@ -121,7 +134,7 @@ void buffer_delete_line(Buffer *buf, int row)
     Line *cur = &buf->lines[row];
 
     int new_len = prev->len + cur->len;
-    prev->chars = realloc(prev->chars, new_len);
+    line_ensure_cap(prev, new_len);
     if (cur->len > 0)
     {
         memcpy(&prev->chars[prev->len], cur->chars, cur->len);
@@ -171,6 +184,7 @@ int buffer_load(Buffer *buf, const char *filename)
         {
             int len = i - line_start;
             buf->lines[line_idx].len = len;
+            buf->lines[line_idx].cap = len;
             buf->lines[line_idx].chars = NULL;
             if (len > 0)
             {

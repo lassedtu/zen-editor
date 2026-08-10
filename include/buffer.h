@@ -16,6 +16,7 @@ typedef struct
 {
     char *chars; // pointer to the character array for this line
     int len;     // length of the line (number of characters)
+    int cap;     // allocated capacity of chars array
 } Line;
 
 /**
