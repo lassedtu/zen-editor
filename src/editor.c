@@ -71,6 +71,12 @@ void editor_run(Editor *ed)
 {
     while (ed->running)
     {
+        /* check if the terminal was resized and update dimensions */
+        if (platform_terminal_has_resized())
+        {
+            platform_terminal_get_size(&ed->screen_rows, &ed->screen_cols);
+        }
+
         editor_scroll(ed); // ensure cursor is visible
 
         // draw the buffer and cursor

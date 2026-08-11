@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 
 /**
@@ -15,6 +16,17 @@
  */
 
 static struct termios orig_termios; // original terminal settings to restore on cleanup
+
+static volatile sig_atomic_t resize_flag = 0; // set by SIGWINCH handler
+
+/**
+ * @brief signal handler for SIGWINCH (terminal resize).
+ */
+static void handle_sigwinch(int sig)
+{
+    (void)sig;
+    resize_flag = 1;
+}
 
 #define WBUF_INIT_SIZE 4096 // write buffer for terminal output
 
@@ -78,6 +90,13 @@ int platform_terminal_init(void)
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
         return -1;
 
+    /* install SIGWINCH handler to detect terminal resizes */
+    struct sigaction sa;
+    sa.sa_handler = handle_sigwinch;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGWINCH, &sa, NULL);
+
     /* enter alternate screen buffer so the main screen is preserved on exit */
     write(STDOUT_FILENO, "\x1b[?1049h", 8);
 
@@ -94,6 +113,16 @@ void platform_terminal_cleanup(void)
     wbuf = NULL;
     wbuf_len = 0;
     wbuf_cap = 0;
+}
+
+int platform_terminal_has_resized(void)
+{
+    if (resize_flag)
+    {
+        resize_flag = 0;
+        return 1;
+    }
+    return 0;
 }
 
 int platform_terminal_get_size(int *rows, int *cols)

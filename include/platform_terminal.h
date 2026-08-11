@@ -57,4 +57,10 @@ int platform_terminal_read_key(void);
  */
 void platform_terminal_flush(void);
 
+/**
+ * @brief check if the terminal has been resized since the last call.
+ * @return 1 if the terminal was resized, 0 otherwise.
+ */
+int platform_terminal_has_resized(void);
+
 #endif /* ZE_PLATFORM_TERMINAL_H */
