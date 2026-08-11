@@ -78,11 +78,17 @@ int platform_terminal_init(void)
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
         return -1;
 
+    /* enter alternate screen buffer so the main screen is preserved on exit */
+    write(STDOUT_FILENO, "\x1b[?1049h", 8);
+
     return 0;
 }
 
 void platform_terminal_cleanup(void)
 {
+    /* leave alternate screen buffer to restore the original terminal content */
+    write(STDOUT_FILENO, "\x1b[?1049l", 8);
+
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
     free(wbuf);
     wbuf = NULL;
