@@ -20,6 +20,8 @@ static HANDLE h_stdout;     // console output handle
 static DWORD orig_in_mode;  // original input console mode to restore on cleanup
 static DWORD orig_out_mode; // original output console mode to restore on cleanup
 
+static int resize_flag = 0; // set when a window buffer size event is received
+
 #define WBUF_INIT_SIZE 4096
 
 static char *wbuf = NULL; // write buffer for terminal output
@@ -84,17 +86,35 @@ int platform_terminal_init(void)
         SetConsoleMode(h_stdout, orig_out_mode);
     }
 
+    /* enter alternate screen buffer so the main screen is preserved on exit */
+    DWORD written;
+    WriteConsole(h_stdout, "\x1b[?1049h", 8, &written, NULL);
+
     return 0;
 }
 
 void platform_terminal_cleanup(void)
 {
+    /* leave alternate screen buffer to restore the original terminal content */
+    DWORD written;
+    WriteConsole(h_stdout, "\x1b[?1049l", 8, &written, NULL);
+
     SetConsoleMode(h_stdin, orig_in_mode);
     SetConsoleMode(h_stdout, orig_out_mode);
     free(wbuf);
     wbuf = NULL;
     wbuf_len = 0;
     wbuf_cap = 0;
+}
+
+int platform_terminal_has_resized(void)
+{
+    if (resize_flag)
+    {
+        resize_flag = 0;
+        return 1;
+    }
+    return 0;
 }
 
 int platform_terminal_get_size(int *rows, int *cols)
@@ -138,6 +158,13 @@ int platform_terminal_read_key(void)
     {
         if (!ReadConsoleInput(h_stdin, &record, 1, &events_read))
             return -1;
+
+        /* handle window resize events */
+        if (record.EventType == WINDOW_BUFFER_SIZE_EVENT)
+        {
+            resize_flag = 1;
+            continue;
+        }
 
         if (record.EventType != KEY_EVENT)
             continue;
