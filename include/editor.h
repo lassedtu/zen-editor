@@ -3,6 +3,7 @@
 
 #include "buffer.h"
 #include "cursor.h"
+#include "undo.h"
 
 /**
  * @file editor.h
@@ -24,6 +25,7 @@ typedef struct
     int scroll_offset; // vertical scroll offset of the editor
     int running;       // flag indicating if the editor is running
     char *filename;    // name of the currently opened file
+    History history;   // undo/redo edit history
 } Editor;
 
 /**

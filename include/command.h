@@ -31,6 +31,8 @@ typedef enum
     CMD_DELETE_CHAR,
     CMD_BACKSPACE,
     CMD_INSERT_NEWLINE,
+    CMD_UNDO,
+    CMD_REDO,
     CMD_SAVE,
     CMD_QUIT,
 } CommandType;

@@ -64,7 +64,8 @@ tests/
 ├── ze_test.h          Framework header
 ├── test_main.c        Runner (includes test files, calls RUN_TESTS)
 ├── test_buffer.c      Buffer unit tests
-└── test_cursor.c      Cursor unit tests
+├── test_cursor.c      Cursor unit tests
+└── test_undo.c        Undo/redo unit and integration tests
 ```
 
 ## Writing Good Tests
@@ -102,6 +103,6 @@ The following modules have pure logic suitable for unit testing:
 
 - **buffer** — insert/delete char, newline split/merge, load/save round-trip, capacity growth.
 - **cursor** — movement, bounds clamping, line wrapping.
-- **undo** (future) — push/pop operations, undo/redo correctness.
+- **undo** — push/pop operations, undo/redo correctness, grouped edits, history cap.
 
 Renderer and terminal code are I/O-heavy and tested manually.
