@@ -12,6 +12,11 @@
  * operations in reverse order, which restores the buffer to its prior state and
  * pushes the entry onto the redo stack. redoing re-applies the original edit.
  *
+ * consecutive typed characters coalesce into a single entry so one undo step
+ * removes a whole word rather than one character at a time (see
+ * history_record_char_insert). because a coalesced run can be arbitrarily long,
+ * each entry owns a dynamically-sized array of operations.
+ *
  * the history operates purely on a Buffer plus a saved cursor position, so it
  * has no dependency on the platform layer and is fully unit-testable.
  */
@@ -51,30 +56,26 @@ typedef struct
 } UndoOp;
 
 /**
- * @def UNDO_MAX_OPS
- * @brief maximum low-level operations grouped into a single logical edit.
- */
-#define UNDO_MAX_OPS 4
-
-/**
  * @struct UndoEntry
  * @brief a single logical edit, grouping one or more low-level operations.
  *
- * operations are applied in reverse index order when applied so that grouped
- * edits (e.g. a line merge that is a delete-line plus an implied append) are
- * reversed as one atomic step. two cursor positions are captured: where the
- * cursor should sit after this entry's operations are applied, and where it sat
- * before. this lets undo restore the pre-edit position while redo restores the
- * post-edit position.
+ * operations are applied in reverse index order so that grouped edits (a line
+ * merge, or a coalesced run of typed characters) are reversed as one atomic
+ * step. the ops array is heap-allocated and owned by the entry. two cursor
+ * positions are captured: where the cursor should sit after this entry's
+ * operations are applied, and where it sat before, so undo restores the
+ * pre-edit position while redo restores the post-edit position.
  */
 typedef struct
 {
-    UndoOp ops[UNDO_MAX_OPS]; // grouped operations
-    int num_ops;              // number of operations in this entry
-    int cursor_row;           // cursor row to restore after applying this entry
-    int cursor_col;           // cursor col to restore after applying this entry
-    int redo_row;             // cursor row to restore after the inverse is applied
-    int redo_col;             // cursor col to restore after the inverse is applied
+    UndoOp *ops;    // heap-allocated array of grouped operations
+    int num_ops;    // number of operations in this entry
+    int cap;        // allocated capacity of the ops array
+    int is_char_run; // 1 if this entry is a coalescing run of typed characters
+    int cursor_row; // cursor row to restore after applying this entry
+    int cursor_col; // cursor col to restore after applying this entry
+    int redo_row;   // cursor row to restore after the inverse is applied
+    int redo_col;   // cursor col to restore after the inverse is applied
 } UndoEntry;
 
 /**
@@ -83,7 +84,7 @@ typedef struct
  */
 typedef struct
 {
-    UndoEntry *entries; // dynamic array of entries
+    UndoEntry *entries; // dynamic array of entries (each owns its ops array)
     int count;          // number of entries currently on the stack
     int cap;            // allocated capacity of the entries array
 } UndoStack;
@@ -111,16 +112,38 @@ void history_init(History *h);
 void history_free(History *h);
 
 /**
- * @brief record a completed edit as a new undo entry.
+ * @brief record a single non-coalescing edit as a new undo entry.
  *
- * pushes the entry onto the undo stack and clears the redo stack (standard
- * undo/redo semantics: a fresh edit invalidates the redo history). when the
- * undo stack exceeds UNDO_MAX_ENTRIES the oldest entry is dropped.
+ * pushes a fresh entry holding the one inverse operation and clears the redo
+ * stack. use this for edits that should each be their own undo step (delete,
+ * backspace, newline). any open character-insert run is ended so the next
+ * typed character starts a new run.
  *
  * @param h pointer to the History.
- * @param entry the entry describing how to reverse the edit.
+ * @param op the inverse operation that reverses the edit.
+ * @param cursor_row cursor row to restore when the edit is undone (pre-edit).
+ * @param cursor_col cursor col to restore when the edit is undone (pre-edit).
+ * @param redo_row cursor row to restore when the edit is redone (post-edit).
+ * @param redo_col cursor col to restore when the edit is redone (post-edit).
  */
-void history_record(History *h, UndoEntry entry);
+void history_record(History *h, UndoOp op, int cursor_row, int cursor_col,
+                    int redo_row, int redo_col);
+
+/**
+ * @brief record a typed character, coalescing it with the previous run.
+ *
+ * consecutive characters typed contiguously merge into the top undo entry so a
+ * single undo removes a whole word. a new entry is started when there is no
+ * open run, when the insertion is not contiguous with the run, or when a word
+ * boundary is crossed (a run is closed after whitespace so the next word begins
+ * a fresh entry). the redo stack is cleared on every recorded character.
+ *
+ * @param h pointer to the History.
+ * @param row row where the character was inserted.
+ * @param col column where the character was inserted.
+ * @param ch the character that was inserted.
+ */
+void history_record_char_insert(History *h, int row, int col, char ch);
 
 /**
  * @brief undo the most recent edit.

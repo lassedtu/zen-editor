@@ -11,30 +11,10 @@
  * this file implements editor_execute(), which maps each CommandType to the
  * corresponding mutation of editor state. all editing actions flow through
  * this single function, which is also where edits are recorded into the undo
- * history so they can later be reversed or replayed.
+ * history so they can later be reversed or replayed. typed characters are
+ * recorded via history_record_char_insert so consecutive keystrokes coalesce
+ * into a single word-level undo step.
  */
-
-/**
- * @brief build a single-operation undo entry.
- * @param op the inverse operation that reverses the edit.
- * @param cur_row cursor row to restore when the edit is undone (pre-edit).
- * @param cur_col cursor col to restore when the edit is undone (pre-edit).
- * @param redo_row cursor row to restore when the edit is redone (post-edit).
- * @param redo_col cursor col to restore when the edit is redone (post-edit).
- * @return the assembled UndoEntry.
- */
-static UndoEntry make_entry(UndoOp op, int cur_row, int cur_col,
-                            int redo_row, int redo_col)
-{
-    UndoEntry entry;
-    entry.num_ops = 1;
-    entry.ops[0] = op;
-    entry.cursor_row = cur_row;
-    entry.cursor_col = cur_col;
-    entry.redo_row = redo_row;
-    entry.redo_col = redo_col;
-    return entry;
-}
 
 void editor_execute(Editor *ed, Command cmd)
 {
@@ -94,10 +74,8 @@ void editor_execute(Editor *ed, Command cmd)
         buffer_insert_char(ed->buffer, row, col, (char)cmd.ch);
         ed->cursor.col++;
 
-        /* undo by deleting the character we just inserted */
-        UndoOp op = {UNDO_OP_DELETE_CHAR, row, col, 0};
-        history_record(&ed->history,
-                       make_entry(op, row, col, row, col + 1));
+        /* coalesce consecutive typed characters into one word-level undo step */
+        history_record_char_insert(&ed->history, row, col, (char)cmd.ch);
         break;
     }
 
@@ -114,8 +92,7 @@ void editor_execute(Editor *ed, Command cmd)
 
             /* undo by reinserting the deleted character; cursor stays put */
             UndoOp op = {UNDO_OP_INSERT_CHAR, row, col, deleted};
-            history_record(&ed->history,
-                           make_entry(op, row, col, row, col));
+            history_record(&ed->history, op, row, col, row, col);
         }
         break;
     }
@@ -131,8 +108,7 @@ void editor_execute(Editor *ed, Command cmd)
 
             /* undo by reinserting the deleted character before the cursor */
             UndoOp op = {UNDO_OP_INSERT_CHAR, row, col - 1, deleted};
-            history_record(&ed->history,
-                           make_entry(op, row, col, row, col - 1));
+            history_record(&ed->history, op, row, col, row, col - 1);
         }
         else if (ed->cursor.row > 0)
         {
@@ -144,8 +120,7 @@ void editor_execute(Editor *ed, Command cmd)
 
             /* undo by splitting the merged line back at the join column */
             UndoOp op = {UNDO_OP_SPLIT_LINE, row - 1, prev_len, 0};
-            history_record(&ed->history,
-                           make_entry(op, row, 0, row - 1, prev_len));
+            history_record(&ed->history, op, row, 0, row - 1, prev_len);
         }
         break;
 
@@ -159,8 +134,7 @@ void editor_execute(Editor *ed, Command cmd)
 
         /* undo by merging the newly created line back into this one */
         UndoOp op = {UNDO_OP_MERGE_LINE, row + 1, 0, 0};
-        history_record(&ed->history,
-                       make_entry(op, row, col, row + 1, 0));
+        history_record(&ed->history, op, row, col, row + 1, 0);
         break;
     }
 

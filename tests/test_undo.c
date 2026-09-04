@@ -111,20 +111,17 @@ TEST(history_record_clears_redo_stack)
     History h;
     history_init(&h);
 
-    UndoEntry e;
-    e.num_ops = 1;
-    e.ops[0] = (UndoOp){UNDO_OP_DELETE_CHAR, 0, 0, 0};
-    e.cursor_row = 0;
-    e.cursor_col = 0;
-    e.redo_row = 0;
-    e.redo_col = 1;
-    history_record(&h, e);
+    UndoOp op = {UNDO_OP_DELETE_CHAR, 0, 0, 0};
+    history_record(&h, op, 0, 0, 0, 1);
 
     int r, c;
     history_undo(&h, buf, &r, &c);      /* moves entry to redo stack */
     ASSERT_EQ(h.redo.count, 1);
 
-    history_record(&h, e);              /* fresh edit clears redo */
+    /* put the character back so the buffer state matches the op again, then a
+       fresh record must clear the redo stack */
+    buffer_insert_char(buf, 0, 0, 'a');
+    history_record(&h, op, 0, 0, 0, 1); /* fresh edit clears redo */
     ASSERT_EQ(h.redo.count, 0);
 
     history_free(&h);
@@ -138,17 +135,10 @@ TEST(history_cap_drops_oldest_entry)
     History h;
     history_init(&h);
 
-    UndoEntry e;
-    e.num_ops = 1;
-    e.ops[0] = (UndoOp){UNDO_OP_DELETE_CHAR, 0, 0, 0};
-    e.cursor_row = 0;
-    e.cursor_col = 0;
-    e.redo_row = 0;
-    e.redo_col = 0;
-
+    UndoOp op = {UNDO_OP_DELETE_CHAR, 0, 0, 0};
     for (int i = 0; i < UNDO_MAX_ENTRIES + 50; i++)
     {
-        history_record(&h, e);
+        history_record(&h, op, 0, 0, 0, 0);
     }
     ASSERT_EQ(h.undo.count, UNDO_MAX_ENTRIES);
 
@@ -160,21 +150,17 @@ TEST(history_cap_drops_oldest_entry)
 /* integration tests via editor_execute                               */
 /* ------------------------------------------------------------------ */
 
-TEST(undo_insert_char_removes_it)
+TEST(undo_insert_word_removes_whole_word)
 {
+    /* consecutive typed characters coalesce: one undo removes the whole word */
     Editor ed;
     test_editor_init(&ed);
 
     type_str(&ed, "hi");
     ASSERT_EQ(ed.buffer->lines[0].len, 2);
+    ASSERT_EQ(ed.history.undo.count, 1); /* single coalesced entry */
 
     Command undo = {CMD_UNDO, 0};
-    editor_execute(&ed, undo);
-    ASSERT_EQ(ed.buffer->lines[0].len, 1);
-    ASSERT(ed.buffer->lines[0].chars[0] == 'h');
-    /* cursor returns to where it was before the undone insert */
-    ASSERT_EQ(ed.cursor.col, 1);
-
     editor_execute(&ed, undo);
     ASSERT_EQ(ed.buffer->lines[0].len, 0);
     ASSERT_EQ(ed.cursor.col, 0);
@@ -182,8 +168,9 @@ TEST(undo_insert_char_removes_it)
     test_editor_free(&ed);
 }
 
-TEST(redo_reapplies_insert)
+TEST(redo_reapplies_whole_word)
 {
+    /* undoing a coalesced word and redoing it restores the entire word */
     Editor ed;
     test_editor_init(&ed);
 
@@ -191,17 +178,12 @@ TEST(redo_reapplies_insert)
     Command undo = {CMD_UNDO, 0};
     Command redo = {CMD_REDO, 0};
 
-    editor_execute(&ed, undo);   /* remove 'b' */
-    editor_execute(&ed, undo);   /* remove 'a' */
+    editor_execute(&ed, undo);   /* remove the whole word "ab" */
     ASSERT_EQ(ed.buffer->lines[0].len, 0);
 
-    editor_execute(&ed, redo);   /* restore 'a' */
-    ASSERT_EQ(ed.buffer->lines[0].len, 1);
-    ASSERT(ed.buffer->lines[0].chars[0] == 'a');
-    ASSERT_EQ(ed.cursor.col, 1);
-
-    editor_execute(&ed, redo);   /* restore 'b' */
+    editor_execute(&ed, redo);   /* restore the whole word "ab" */
     ASSERT_EQ(ed.buffer->lines[0].len, 2);
+    ASSERT(ed.buffer->lines[0].chars[0] == 'a');
     ASSERT(ed.buffer->lines[0].chars[1] == 'b');
     ASSERT_EQ(ed.cursor.col, 2);
 
@@ -342,19 +324,19 @@ TEST(new_edit_clears_redo_via_editor)
     Editor ed;
     test_editor_init(&ed);
 
-    type_str(&ed, "ab");
+    type_str(&ed, "ab");               /* one coalesced word */
     Command undo = {CMD_UNDO, 0};
     Command redo = {CMD_REDO, 0};
-    editor_execute(&ed, undo);         /* remove 'b', buffer "a" */
-    ASSERT_EQ(ed.buffer->lines[0].len, 1);
+    editor_execute(&ed, undo);         /* remove the whole word -> empty */
+    ASSERT_EQ(ed.buffer->lines[0].len, 0);
 
     type_str(&ed, "x");                /* fresh edit clears redo */
-    ASSERT_EQ(ed.buffer->lines[0].len, 2);
-    ASSERT(ed.buffer->lines[0].chars[1] == 'x');
+    ASSERT_EQ(ed.buffer->lines[0].len, 1);
+    ASSERT(ed.buffer->lines[0].chars[0] == 'x');
 
     editor_execute(&ed, redo);         /* should do nothing */
-    ASSERT_EQ(ed.buffer->lines[0].len, 2);
-    ASSERT(ed.buffer->lines[0].chars[1] == 'x');
+    ASSERT_EQ(ed.buffer->lines[0].len, 1);
+    ASSERT(ed.buffer->lines[0].chars[0] == 'x');
 
     test_editor_free(&ed);
 }
@@ -362,7 +344,8 @@ TEST(new_edit_clears_redo_via_editor)
 TEST(undo_redo_full_roundtrip)
 {
     /* a sequence of mixed edits should undo back to empty and redo back to
-       the exact same final buffer state */
+       the exact same final buffer state. with coalescing each typed word is a
+       single step: "hello" + newline + "world" = 3 undo steps */
     Editor ed;
     test_editor_init(&ed);
 
@@ -371,10 +354,10 @@ TEST(undo_redo_full_roundtrip)
     editor_execute(&ed, nl);
     type_str(&ed, "world");
     /* state: line0 "hello", line1 "world" */
+    ASSERT_EQ(ed.history.undo.count, 3);
 
     Command undo = {CMD_UNDO, 0};
-    /* 5 (world) + 1 (newline) + 5 (hello) = 11 edits to fully undo */
-    for (int i = 0; i < 11; i++)
+    for (int i = 0; i < 3; i++)
     {
         editor_execute(&ed, undo);
     }
@@ -382,7 +365,7 @@ TEST(undo_redo_full_roundtrip)
     ASSERT_EQ(ed.buffer->lines[0].len, 0);
 
     Command redo = {CMD_REDO, 0};
-    for (int i = 0; i < 11; i++)
+    for (int i = 0; i < 3; i++)
     {
         editor_execute(&ed, redo);
     }
@@ -391,6 +374,116 @@ TEST(undo_redo_full_roundtrip)
     ASSERT_EQ(ed.buffer->lines[1].len, 5);
     ASSERT(ed.buffer->lines[0].chars[0] == 'h');
     ASSERT(ed.buffer->lines[1].chars[0] == 'w');
+
+    test_editor_free(&ed);
+}
+
+/* ------------------------------------------------------------------ */
+/* word-level coalescing tests                                        */
+/* ------------------------------------------------------------------ */
+
+TEST(coalesce_spaces_separate_words)
+{
+    /* "cat dog" is two words: one undo removes "dog", the next removes "cat "
+       (the space stays attached to the first word) */
+    Editor ed;
+    test_editor_init(&ed);
+
+    type_str(&ed, "cat dog");
+    ASSERT_EQ(ed.history.undo.count, 2);
+
+    Command undo = {CMD_UNDO, 0};
+    editor_execute(&ed, undo);
+    ASSERT_EQ(ed.buffer->lines[0].len, 4);   /* "cat " remains */
+    ASSERT(ed.buffer->lines[0].chars[3] == ' ');
+
+    editor_execute(&ed, undo);
+    ASSERT_EQ(ed.buffer->lines[0].len, 0);
+
+    test_editor_free(&ed);
+}
+
+TEST(coalesce_multiple_spaces_group_with_word)
+{
+    /* runs of whitespace stay with the preceding word rather than forming
+       their own undo steps: "a  b" -> two words ("a  " and "b") */
+    Editor ed;
+    test_editor_init(&ed);
+
+    type_str(&ed, "a  b");
+    ASSERT_EQ(ed.history.undo.count, 2);
+
+    Command undo = {CMD_UNDO, 0};
+    editor_execute(&ed, undo);
+    ASSERT_EQ(ed.buffer->lines[0].len, 3);   /* "a  " remains */
+
+    test_editor_free(&ed);
+}
+
+TEST(coalesce_broken_by_delete)
+{
+    /* a non-typing edit ends the run so the next character starts a new word,
+       even if it lands contiguously */
+    Editor ed;
+    test_editor_init(&ed);
+
+    type_str(&ed, "ab");                 /* run: "ab" */
+    Command bs = {CMD_BACKSPACE, 0};
+    editor_execute(&ed, bs);             /* deletes 'b', ends the run */
+    type_str(&ed, "c");                  /* new run starts at col 1 */
+    /* entries: [word "ab"], [backspace], [word "c"] */
+    ASSERT_EQ(ed.history.undo.count, 3);
+
+    Command undo = {CMD_UNDO, 0};
+    editor_execute(&ed, undo);           /* undo "c" */
+    ASSERT_EQ(ed.buffer->lines[0].len, 1);
+    ASSERT(ed.buffer->lines[0].chars[0] == 'a');
+
+    test_editor_free(&ed);
+}
+
+TEST(coalesce_broken_across_lines)
+{
+    /* typing on a new line after Enter must not coalesce with the prior line */
+    Editor ed;
+    test_editor_init(&ed);
+
+    type_str(&ed, "ab");
+    Command nl = {CMD_INSERT_NEWLINE, 0};
+    editor_execute(&ed, nl);
+    type_str(&ed, "cd");
+    /* entries: [word "ab"], [newline], [word "cd"] */
+    ASSERT_EQ(ed.history.undo.count, 3);
+
+    Command undo = {CMD_UNDO, 0};
+    editor_execute(&ed, undo);           /* removes only "cd" on line 1 */
+    ASSERT_EQ(ed.buffer->num_lines, 2);
+    ASSERT_EQ(ed.buffer->lines[1].len, 0);
+    ASSERT_EQ(ed.buffer->lines[0].len, 2);
+
+    test_editor_free(&ed);
+}
+
+TEST(coalesce_long_word_grows_ops_array)
+{
+    /* a word longer than the initial ops capacity must still undo as one step,
+       exercising the growable ops array */
+    Editor ed;
+    test_editor_init(&ed);
+
+    type_str(&ed, "supercalifragilistic");   /* 20 chars, one word */
+    ASSERT_EQ(ed.history.undo.count, 1);
+    ASSERT_EQ(ed.buffer->lines[0].len, 20);
+
+    Command undo = {CMD_UNDO, 0};
+    editor_execute(&ed, undo);
+    ASSERT_EQ(ed.buffer->lines[0].len, 0);
+
+    Command redo = {CMD_REDO, 0};
+    editor_execute(&ed, redo);
+    ASSERT_EQ(ed.buffer->lines[0].len, 20);
+    ASSERT(ed.buffer->lines[0].chars[0] == 's');
+    ASSERT(ed.buffer->lines[0].chars[19] == 'c');
 
     test_editor_free(&ed);
 }
