@@ -17,6 +17,7 @@ int editor_init(Editor *ed, const char *filename)
     ed->scroll_offset = 0;
     ed->running = 1;
     ed->filename = NULL;
+    history_init(&ed->history);
 
     if (platform_terminal_init() != 0)
     {
@@ -101,5 +102,6 @@ void editor_cleanup(Editor *ed)
 {
     platform_terminal_cleanup();
     buffer_free(ed->buffer);
+    history_free(&ed->history);
     free(ed->filename);
 }

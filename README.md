@@ -36,6 +36,8 @@ The binary is output to `build/ze`.
 | Enter      | Insert new line         |
 | Backspace  | Delete character before |
 | Delete     | Delete character at     |
+| Ctrl+Z     | Undo                    |
+| Ctrl+Y     | Redo                    |
 | Ctrl+S     | Save file               |
 | Ctrl+Q     | Quit                    |
 
@@ -50,11 +52,13 @@ ze/
 │   ├── cursor.c        Cursor movement and bounds checking
 │   ├── renderer.c      Screen drawing and scrolling
 │   ├── command.c       Command execution
-│   └── keymap.c        Key-to-command translation
+│   ├── keymap.c        Key-to-command translation
+│   └── undo.c          Undo/redo history
 ├── include/
 │   ├── keys.h          Centralized key code definitions
 │   ├── command.h       Command types and execution
 │   ├── keymap.h        Key translation interface
+│   ├── undo.h          Undo/redo history interface
 │   └── ...             Buffer, cursor, renderer, platform headers
 ├── platforms/
 │   ├── unix/           Unix terminal and filesystem backend
@@ -74,7 +78,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 4 — Rendering System
 - [x] Phase 5 — Filesystem Abstraction
 - [x] Phase 6 — Editor Commands
-- [ ] Phase 7 — Undo and Redo
+- [x] Phase 7 — Undo and Redo
 - [ ] Phase 8 — Search
 - [ ] Phase 9 — Configuration
 - [ ] Phase 10 — Syntax Highlighting

@@ -24,6 +24,14 @@ Command keymap_translate(int key)
         cmd.type = CMD_SAVE;
         break;
 
+    case KEY_CTRL('z'):
+        cmd.type = CMD_UNDO;
+        break;
+
+    case KEY_CTRL('y'):
+        cmd.type = CMD_REDO;
+        break;
+
     case KEY_ARROW_UP:
         cmd.type = CMD_MOVE_UP;
         break;
