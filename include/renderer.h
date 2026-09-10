@@ -18,8 +18,10 @@
  * @param screen_rows number of rows in the terminal
  * @param screen_cols number of columns in the terminal
  * @param scroll_offset the number of lines to scroll from the top of the buffer
+ * @param highlight optional query string whose matches are highlighted; NULL or empty disables highlighting
  */
-void renderer_draw(Buffer *buf, Cursor *cur, int screen_rows, int screen_cols, int scroll_offset);
+void renderer_draw(Buffer *buf, Cursor *cur, int screen_rows, int screen_cols,
+                   int scroll_offset, const char *highlight);
 
 /**
  * @brief draw the status bar at the bottom of the screen, showing filename, line count, and cursor position
@@ -28,6 +30,17 @@ void renderer_draw(Buffer *buf, Cursor *cur, int screen_rows, int screen_cols, i
  * @param cur_row the current row of the cursor
  * @param screen_rows the total number of rows in the terminal
  */
-void renderer_draw_status(const char *filename, int num_lines, int cur_row, int screen_rows);
+void renderer_draw_status(const char *filename, int num_lines, int cur_row,
+                          int screen_rows);
+
+/**
+ * @brief draw the search prompt on the status row, replacing the status bar.
+ * @param query the current search query text.
+ * @param match_count the number of matches for the query in the buffer.
+ * @param screen_rows the total number of rows in the terminal.
+ * @param screen_cols the total number of columns in the terminal.
+ */
+void renderer_draw_search_prompt(const char *query, int match_count,
+                                 int screen_rows, int screen_cols);
 
 #endif /* ZE_RENDERER_H */

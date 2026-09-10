@@ -74,6 +74,8 @@ ze/
 - Rendering
 - Filesystem abstraction
 - Commands
+- Undo and redo
+- Search
 
 ---
 
@@ -107,6 +109,12 @@ This gets us undo and redo, and sets things up for macros down the line.
 ---
 
 ## Search
+
+> **Status: done.** Forward/backward search with wrap-around, incremental
+> search that updates as you type, and inverted-video highlighting of matches.
+> `Ctrl+F` opens the prompt; arrow keys / `Ctrl+N` / `Ctrl+P` step between
+> matches; `Enter` keeps the match, `Esc` returns to the origin. Faster
+> algorithms and regex remain future work.
 
 Basic search first:
 

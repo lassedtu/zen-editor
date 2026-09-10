@@ -162,6 +162,22 @@ void editor_execute(Editor *ed, Command cmd)
         break;
     }
 
+    case CMD_SEARCH_OPEN:
+        editor_search_open(ed);
+        break;
+
+    case CMD_SEARCH_NEXT:
+        editor_search_next(ed);
+        break;
+
+    case CMD_SEARCH_PREV:
+        editor_search_prev(ed);
+        break;
+
+    case CMD_SEARCH_CLOSE:
+        editor_search_close(ed);
+        break;
+
     case CMD_SAVE:
         if (ed->filename)
         {

@@ -11,6 +11,7 @@
 #include "test_buffer.c"
 #include "test_cursor.c"
 #include "test_undo.c"
+#include "test_search.c"
 
 int main(void)
 {
