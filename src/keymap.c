@@ -32,6 +32,10 @@ Command keymap_translate(int key)
         cmd.type = CMD_REDO;
         break;
 
+    case KEY_CTRL('f'):
+        cmd.type = CMD_SEARCH_OPEN;
+        break;
+
     case KEY_ARROW_UP:
         cmd.type = CMD_MOVE_UP;
         break;

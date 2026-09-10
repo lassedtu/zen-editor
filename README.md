@@ -38,8 +38,12 @@ The binary is output to `build/ze`.
 | Delete     | Delete character at     |
 | Ctrl+Z     | Undo                    |
 | Ctrl+Y     | Redo                    |
+| Ctrl+F     | Search                  |
 | Ctrl+S     | Save file               |
 | Ctrl+Q     | Quit                    |
+
+While searching: type to filter, Enter keeps the match, Esc cancels, and the
+arrow keys (or Ctrl+N / Ctrl+P) jump between matches.
 
 ## Project Structure
 
@@ -53,6 +57,7 @@ ze/
 │   ├── renderer.c      Screen drawing and scrolling
 │   ├── command.c       Command execution
 │   ├── keymap.c        Key-to-command translation
+│   ├── search.c        Buffer search (match finding, next/prev)
 │   └── undo.c          Undo/redo history
 ├── include/
 │   ├── keys.h          Centralized key code definitions
@@ -79,7 +84,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 5 — Filesystem Abstraction
 - [x] Phase 6 — Editor Commands
 - [x] Phase 7 — Undo and Redo
-- [ ] Phase 8 — Search
+- [x] Phase 8 — Search
 - [ ] Phase 9 — Configuration
 - [ ] Phase 10 — Syntax Highlighting
 

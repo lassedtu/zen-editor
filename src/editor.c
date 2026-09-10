@@ -1,7 +1,9 @@
 #include "editor.h"
 #include "command.h"
 #include "keymap.h"
+#include "keys.h"
 #include "renderer.h"
+#include "search.h"
 #include "platform_terminal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +20,10 @@ int editor_init(Editor *ed, const char *filename)
     ed->running = 1;
     ed->filename = NULL;
     history_init(&ed->history);
+
+    ed->search.active = 0;
+    ed->search.query[0] = '\0';
+    ed->search.query_len = 0;
 
     if (platform_terminal_init() != 0)
     {
@@ -58,12 +64,64 @@ static void editor_scroll(Editor *ed)
 }
 
 /**
+ * @brief handle a key while the search prompt is active.
+ *
+ * captures input for the query directly instead of routing through the keymap:
+ * printable characters extend the query, Backspace shortens it, Enter and the
+ * next/prev keys step between matches, and Escape cancels back to the origin.
+ *
+ * @param ed pointer to the editor state.
+ * @param key the raw key code from the platform layer.
+ */
+static void editor_process_search_key(Editor *ed, int key)
+{
+    switch (key)
+    {
+    case KEY_ESCAPE:
+        editor_search_cancel(ed);
+        break;
+
+    case KEY_ENTER:
+        editor_search_close(ed);
+        break;
+
+    case KEY_BACKSPACE:
+        editor_search_backspace(ed);
+        break;
+
+    case KEY_ARROW_DOWN:
+    case KEY_CTRL('n'):
+        editor_search_next(ed);
+        break;
+
+    case KEY_ARROW_UP:
+    case KEY_CTRL('p'):
+        editor_search_prev(ed);
+        break;
+
+    default:
+        if (key >= 32 && key < 127)
+        {
+            editor_search_input_char(ed, (char)key);
+        }
+        break;
+    }
+}
+
+/**
  * @brief read a key and execute the corresponding command.
  * @param ed pointer to the editor state.
  */
 static void editor_process_key(Editor *ed)
 {
     int key = platform_terminal_read_key();
+
+    if (ed->search.active)
+    {
+        editor_process_search_key(ed, key);
+        return;
+    }
+
     Command cmd = keymap_translate(key);
     editor_execute(ed, cmd);
 }
@@ -80,13 +138,31 @@ void editor_run(Editor *ed)
 
         editor_scroll(ed); // ensure cursor is visible
 
+        /* highlight matches only while the search prompt is open */
+        const char *highlight = ed->search.active ? ed->search.query : NULL;
+
         // draw the buffer and cursor
         renderer_draw(ed->buffer, &ed->cursor, ed->screen_rows,
-                      ed->screen_cols, ed->scroll_offset);
+                      ed->screen_cols, ed->scroll_offset, highlight);
 
-        // draw the status bar
-        renderer_draw_status(ed->filename, ed->buffer->num_lines,
-                             ed->cursor.row, ed->screen_rows);
+        if (ed->search.active)
+        {
+            /* count matches across the whole buffer for the prompt readout */
+            int match_count = 0;
+            for (int i = 0; i < ed->buffer->num_lines; i++)
+            {
+                match_count += search_count_in_line(&ed->buffer->lines[i],
+                                                     ed->search.query);
+            }
+            renderer_draw_search_prompt(ed->search.query, match_count,
+                                        ed->screen_rows, ed->screen_cols);
+        }
+        else
+        {
+            // draw the status bar
+            renderer_draw_status(ed->filename, ed->buffer->num_lines,
+                                 ed->cursor.row, ed->screen_rows);
+        }
 
         // reposition cursor after drawing status
         platform_terminal_move_cursor(ed->cursor.row - ed->scroll_offset,

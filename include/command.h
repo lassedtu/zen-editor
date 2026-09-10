@@ -33,6 +33,10 @@ typedef enum
     CMD_INSERT_NEWLINE,
     CMD_UNDO,
     CMD_REDO,
+    CMD_SEARCH_OPEN,
+    CMD_SEARCH_NEXT,
+    CMD_SEARCH_PREV,
+    CMD_SEARCH_CLOSE,
     CMD_SAVE,
     CMD_QUIT,
 } CommandType;
