@@ -5,6 +5,7 @@
 #include "cursor.h"
 #include "undo.h"
 #include "selection.h"
+#include "clipboard.h"
 
 /**
  * @file editor.h
@@ -49,6 +50,7 @@ typedef struct
     History history;   // undo/redo edit history
     Search search;     // search prompt and query state
     Selection selection; // active text selection region
+    Clipboard clipboard; // internal copy/cut/paste buffer
 } Editor;
 
 /**

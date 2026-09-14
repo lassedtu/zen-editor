@@ -44,6 +44,9 @@ typedef enum
     CMD_SELECT_HOME,
     CMD_SELECT_END,
     CMD_SELECT_ALL,
+    CMD_COPY,
+    CMD_CUT,
+    CMD_PASTE,
     CMD_SAVE,
     CMD_QUIT,
 } CommandType;

@@ -4,6 +4,9 @@
 #include "cursor.h"
 #include "undo.h"
 #include "selection.h"
+#include "clipboard.h"
+
+#include <stdlib.h>
 
 /**
  * @file command.c
@@ -240,6 +243,78 @@ void editor_execute(Editor *ed, Command cmd)
         selection_set_cursor(&ed->selection, last_row, last_col);
         ed->cursor.row = last_row;
         ed->cursor.col = last_col;
+        break;
+    }
+
+    case CMD_COPY:
+    {
+        /* copy the selected region into the clipboard; the buffer is unchanged
+           and the selection stays active. no undo entry is recorded. */
+        if (ed->selection.active)
+        {
+            int len = 0;
+            char *text = selection_copy_region(&ed->selection, ed->buffer, &len);
+            if (text)
+            {
+                clipboard_set(&ed->clipboard, text, len);
+                free(text);
+            }
+        }
+        break;
+    }
+
+    case CMD_CUT:
+    {
+        /* copy the region, then delete it as one grouped undo step, then move
+           the cursor to the region start and clear the selection. */
+        if (ed->selection.active)
+        {
+            int len = 0;
+            char *text = selection_copy_region(&ed->selection, ed->buffer, &len);
+            if (text)
+            {
+                clipboard_set(&ed->clipboard, text, len);
+                free(text);
+
+                int r, c;
+                if (selection_delete_region(&ed->selection, ed->buffer,
+                                            &ed->history, &r, &c))
+                {
+                    ed->cursor.row = r;
+                    ed->cursor.col = c;
+                    cursor_clamp(&ed->cursor, ed->buffer);
+                }
+            }
+            selection_clear(&ed->selection);
+        }
+        break;
+    }
+
+    case CMD_PASTE:
+    {
+        /* replace any active selection first so paste overwrites it, then
+           insert the clipboard text as one grouped undo step. */
+        if (ed->selection.active)
+        {
+            int r, c;
+            if (selection_delete_region(&ed->selection, ed->buffer,
+                                        &ed->history, &r, &c))
+            {
+                ed->cursor.row = r;
+                ed->cursor.col = c;
+                cursor_clamp(&ed->cursor, ed->buffer);
+            }
+            selection_clear(&ed->selection);
+        }
+
+        int r, c;
+        if (clipboard_paste(&ed->clipboard, ed->buffer, &ed->history,
+                            ed->cursor.row, ed->cursor.col, &r, &c))
+        {
+            ed->cursor.row = r;
+            ed->cursor.col = c;
+            cursor_clamp(&ed->cursor, ed->buffer);
+        }
         break;
     }
 

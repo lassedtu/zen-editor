@@ -39,6 +39,9 @@ The binary is output to `build/ze`.
 | Shift+Arrow | Select text            |
 | Shift+Home / Shift+End | Select to line start/end |
 | Ctrl+A     | Select all              |
+| Ctrl+C     | Copy selection          |
+| Ctrl+X     | Cut selection           |
+| Ctrl+V     | Paste                   |
 | Ctrl+Z     | Undo                    |
 | Ctrl+Y     | Redo                    |
 | Ctrl+F     | Search                  |
@@ -47,6 +50,16 @@ The binary is output to `build/ze`.
 
 While searching: type to filter, Enter keeps the match, Esc cancels, and the
 arrow keys (or Ctrl+N / Ctrl+P) jump between matches.
+
+### macOS Command Key
+
+The Command key does not reach a terminal program. The terminal emulator
+handles it and does not send a byte for it. So the editor cannot bind
+Command+C, Command+V, Command+Z, or Command+Y directly. Use the Control keys
+above, or map the Command shortcuts in your terminal emulator so that each
+Command combination sends the matching Control byte (for example, map
+Command+C to send Control+C). Command+Q closes the terminal window and cannot
+be remapped safely, so quit with Control+Q.
 
 ## Project Structure
 
@@ -62,6 +75,7 @@ ze/
 │   ├── keymap.c        Key-to-command translation
 │   ├── search.c        Buffer search (match finding, next/prev)
 │   ├── selection.c     Text selection state and region operations
+│   ├── clipboard.c     Clipboard buffer and paste operation
 │   └── undo.c          Undo/redo history
 ├── include/
 │   ├── keys.h          Centralized key code definitions
@@ -90,7 +104,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 7 — Undo and Redo
 - [x] Phase 8 — Search
 - [x] Phase 9 — Text Selection
-- [ ] Phase 10 — Clipboard (Copy / Cut / Paste)
+- [x] Phase 10 — Clipboard (Copy / Cut / Paste)
 - [ ] Phase 11 — Configuration
 - [ ] Phase 12 — Syntax Highlighting
 

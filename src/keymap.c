@@ -8,6 +8,20 @@
  * this file maps raw key codes to Commands. the current mapping is hard-coded
  * but isolated here so that future configurable bindings only need to change
  * this file.
+ *
+ * platform note (macOS): the Command key does not reach a terminal program.
+ * the terminal emulator handles the Command key itself and does not send a
+ * byte for it. therefore the editor cannot bind Command+C, Command+V,
+ * Command+Z, or Command+Y from inside the program. the editor binds the
+ * portable Control equivalents, which the terminal does deliver. to get
+ * Command shortcuts on macOS, map them in the terminal emulator so that each
+ * Command combination sends the matching Control byte (for example, map
+ * Command+C to send Control+C). the editor then receives the Control byte and
+ * runs the command.
+ *
+ * quit note (macOS): Command+Q closes the terminal window and cannot be
+ * remapped safely, so the editor keeps Control+Q as the quit key. do not map
+ * Command+Q to quit the editor.
  */
 
 Command keymap_translate(int key)
@@ -38,6 +52,18 @@ Command keymap_translate(int key)
 
     case KEY_CTRL('a'):
         cmd.type = CMD_SELECT_ALL;
+        break;
+
+    case KEY_CTRL('c'):
+        cmd.type = CMD_COPY;
+        break;
+
+    case KEY_CTRL('x'):
+        cmd.type = CMD_CUT;
+        break;
+
+    case KEY_CTRL('v'):
+        cmd.type = CMD_PASTE;
         break;
 
     case KEY_SHIFT_ARROW_UP:

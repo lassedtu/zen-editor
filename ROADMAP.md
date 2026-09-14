@@ -77,6 +77,7 @@ ze/
 - Undo and redo
 - Search
 - Text selection
+- Clipboard (copy / cut / paste)
 
 ---
 
@@ -177,6 +178,17 @@ A selection has two points: the anchor and the cursor. The anchor is the positio
 ---
 
 ## Clipboard (copy / cut / paste)
+
+> **Status: done.** The editor core owns an internal clipboard buffer. Copy
+> stores the selected region and leaves the buffer unchanged. Cut stores the
+> region and deletes it as one grouped undo step. Paste inserts the stored
+> text at the cursor, splits lines at each newline, and records one grouped
+> undo step; a paste over an active selection replaces the selection first.
+> `Ctrl+C`, `Ctrl+X`, and `Ctrl+V` are bound. On macOS the Command key does
+> not reach a terminal program, so map the Command shortcuts in the terminal
+> emulator to send the matching Control bytes; keep quit on `Ctrl+Q` because
+> `Command+Q` closes the terminal window. The optional system-clipboard hook
+> (`platform_clipboard_get` / `platform_clipboard_set`) remains future work.
 
 The editor must copy, cut, and paste text. The clipboard is an internal buffer that holds the last copied or cut text. The core owns this buffer. The platform layer can later connect the internal clipboard to a system clipboard, but the core does not need the system clipboard to work.
 

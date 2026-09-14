@@ -26,6 +26,7 @@ int editor_init(Editor *ed, const char *filename)
     ed->search.query_len = 0;
 
     selection_clear(&ed->selection);
+    clipboard_init(&ed->clipboard);
 
     if (platform_terminal_init() != 0)
     {
@@ -182,5 +183,6 @@ void editor_cleanup(Editor *ed)
     platform_terminal_cleanup();
     buffer_free(ed->buffer);
     history_free(&ed->history);
+    clipboard_free(&ed->clipboard);
     free(ed->filename);
 }
