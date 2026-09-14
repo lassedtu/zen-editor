@@ -30,6 +30,8 @@ static void test_editor_init(Editor *ed)
     ed->running = 1;
     ed->filename = NULL;
     history_init(&ed->history);
+    selection_clear(&ed->selection);
+    clipboard_init(&ed->clipboard);
 }
 
 /**
@@ -40,6 +42,7 @@ static void test_editor_free(Editor *ed)
 {
     buffer_free(ed->buffer);
     history_free(&ed->history);
+    clipboard_free(&ed->clipboard);
 }
 
 /**
@@ -55,10 +58,6 @@ static void type_str(Editor *ed, const char *s)
         editor_execute(ed, cmd);
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* module-level tests                                                 */
-/* ------------------------------------------------------------------ */
 
 TEST(history_init_starts_empty)
 {
@@ -141,10 +140,6 @@ TEST(history_cap_drops_oldest_entry)
     history_free(&h);
     buffer_free(buf);
 }
-
-/* ------------------------------------------------------------------ */
-/* integration tests via editor_execute                               */
-/* ------------------------------------------------------------------ */
 
 TEST(undo_insert_word_removes_whole_word)
 {

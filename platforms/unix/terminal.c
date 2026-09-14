@@ -174,6 +174,36 @@ int platform_terminal_read_key(void)
         char seq[3];
         if (read(STDIN_FILENO, &seq[0], 1) != 1)
             return '\x1b';
+
+        /* meta (Alt/Option) word motion sent as "\x1b b" and "\x1b f" by some
+           terminals (the readline convention). */
+        if (seq[0] == 'b')
+            return KEY_ALT_ARROW_LEFT;
+        if (seq[0] == 'f')
+            return KEY_ALT_ARROW_RIGHT;
+
+        /* some terminals send Alt+<arrow> as an ESC prefix before a normal
+           arrow sequence: "\x1b \x1b [ <final>". consume the second ESC and
+           read the bracketed arrow that follows. */
+        if (seq[0] == '\x1b')
+        {
+            char br, final;
+            if (read(STDIN_FILENO, &br, 1) != 1)
+                return '\x1b';
+            if (br != '[')
+                return '\x1b';
+            if (read(STDIN_FILENO, &final, 1) != 1)
+                return '\x1b';
+            switch (final)
+            {
+            case 'C':
+                return KEY_ALT_ARROW_RIGHT;
+            case 'D':
+                return KEY_ALT_ARROW_LEFT;
+            }
+            return '\x1b';
+        }
+
         if (read(STDIN_FILENO, &seq[1], 1) != 1)
             return '\x1b';
 
@@ -206,7 +236,8 @@ int platform_terminal_read_key(void)
                 else if (seq[1] == '1' && seq[2] == ';')
                 {
                     /* modified navigation key: "\x1b[1;<mod><final>". read the
-                       modifier and the final byte. modifier 2 is Shift. */
+                       modifier and the final byte. modifier 2 is Shift,
+                       modifier 3 is Alt, and modifier 4 is Alt+Shift. */
                     char mod, final;
                     if (read(STDIN_FILENO, &mod, 1) != 1)
                         return '\x1b';
@@ -229,6 +260,26 @@ int platform_terminal_read_key(void)
                             return KEY_SHIFT_HOME;
                         case 'F':
                             return KEY_SHIFT_END;
+                        }
+                    }
+                    else if (mod == '3')
+                    {
+                        switch (final)
+                        {
+                        case 'C':
+                            return KEY_ALT_ARROW_RIGHT;
+                        case 'D':
+                            return KEY_ALT_ARROW_LEFT;
+                        }
+                    }
+                    else if (mod == '4')
+                    {
+                        switch (final)
+                        {
+                        case 'C':
+                            return KEY_ALT_SHIFT_ARROW_RIGHT;
+                        case 'D':
+                            return KEY_ALT_SHIFT_ARROW_LEFT;
                         }
                     }
                 }

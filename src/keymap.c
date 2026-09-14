@@ -90,6 +90,22 @@ Command keymap_translate(int key)
         cmd.type = CMD_SELECT_END;
         break;
 
+    case KEY_ALT_ARROW_LEFT:
+        cmd.type = CMD_MOVE_WORD_LEFT;
+        break;
+
+    case KEY_ALT_ARROW_RIGHT:
+        cmd.type = CMD_MOVE_WORD_RIGHT;
+        break;
+
+    case KEY_ALT_SHIFT_ARROW_LEFT:
+        cmd.type = CMD_SELECT_WORD_LEFT;
+        break;
+
+    case KEY_ALT_SHIFT_ARROW_RIGHT:
+        cmd.type = CMD_SELECT_WORD_RIGHT;
+        break;
+
     case KEY_ARROW_UP:
         cmd.type = CMD_MOVE_UP;
         break;

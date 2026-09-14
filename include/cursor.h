@@ -31,6 +31,32 @@ void cursor_move_left(Cursor *cur, Buffer *buf);
 void cursor_move_right(Cursor *cur, Buffer *buf);
 
 /**
+ * @brief move the cursor left to the start of the previous word.
+ *
+ * skips any whitespace to the left of the cursor, then skips the run of
+ * characters that has the same class (word characters or punctuation). the
+ * cursor stops at the start of that run. the move wraps to the end of the
+ * previous line when the cursor is at the start of a line.
+ *
+ * @param cur pointer to the Cursor to be moved.
+ * @param buf pointer to the Buffer in which the cursor is moving.
+ */
+void cursor_move_word_left(Cursor *cur, Buffer *buf);
+
+/**
+ * @brief move the cursor right to the end of the next word.
+ *
+ * skips any whitespace to the right of the cursor, then skips the run of
+ * characters that has the same class (word characters or punctuation). the
+ * cursor stops after the end of that run. the move wraps to the start of the
+ * next line when the cursor is at the end of a line.
+ *
+ * @param cur pointer to the Cursor to be moved.
+ * @param buf pointer to the Buffer in which the cursor is moving.
+ */
+void cursor_move_word_right(Cursor *cur, Buffer *buf);
+
+/**
  * @brief move the cursor to the beginning of the current line.
  * @param cur pointer to the Cursor to be moved.
  */

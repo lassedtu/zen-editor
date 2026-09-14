@@ -32,11 +32,13 @@ The binary is output to `build/ze`.
 | Key        | Action                  |
 |------------|-------------------------|
 | Arrow keys | Move cursor             |
+| Alt+Left / Alt+Right | Move by word  |
 | Home / End | Jump to line start/end  |
 | Enter      | Insert new line         |
 | Backspace  | Delete character before |
 | Delete     | Delete character at     |
 | Shift+Arrow | Select text            |
+| Alt+Shift+Left / Alt+Shift+Right | Select by word |
 | Shift+Home / Shift+End | Select to line start/end |
 | Ctrl+A     | Select all              |
 | Ctrl+C     | Copy selection          |
@@ -60,6 +62,12 @@ above, or map the Command shortcuts in your terminal emulator so that each
 Command combination sends the matching Control byte (for example, map
 Command+C to send Control+C). Command+Q closes the terminal window and cannot
 be remapped safely, so quit with Control+Q.
+
+The editor reads word motion from the Option (Alt) key. It accepts the two
+common forms that terminals send: the xterm modified-arrow sequence and the
+Meta "Option b" / "Option f" sequence. In Terminal.app, enable "Use Option as
+Meta key" in the profile keyboard settings so that Option+Left and
+Option+Right send word motion.
 
 ## Project Structure
 

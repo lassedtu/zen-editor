@@ -47,6 +47,16 @@ void editor_execute(Editor *ed, Command cmd)
         cursor_move_right(&ed->cursor, ed->buffer);
         break;
 
+    case CMD_MOVE_WORD_LEFT:
+        selection_clear(&ed->selection);
+        cursor_move_word_left(&ed->cursor, ed->buffer);
+        break;
+
+    case CMD_MOVE_WORD_RIGHT:
+        selection_clear(&ed->selection);
+        cursor_move_word_right(&ed->cursor, ed->buffer);
+        break;
+
     case CMD_HOME:
         selection_clear(&ed->selection);
         cursor_home(&ed->cursor);
@@ -198,6 +208,8 @@ void editor_execute(Editor *ed, Command cmd)
     case CMD_SELECT_DOWN:
     case CMD_SELECT_HOME:
     case CMD_SELECT_END:
+    case CMD_SELECT_WORD_LEFT:
+    case CMD_SELECT_WORD_RIGHT:
     {
         /* start a selection at the current cursor if none is active */
         if (!ed->selection.active)
@@ -225,6 +237,12 @@ void editor_execute(Editor *ed, Command cmd)
             break;
         case CMD_SELECT_END:
             cursor_end(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_WORD_LEFT:
+            cursor_move_word_left(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_WORD_RIGHT:
+            cursor_move_word_right(&ed->cursor, ed->buffer);
             break;
         default:
             break;

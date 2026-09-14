@@ -447,3 +447,84 @@ TEST(cmd_insert_char_clears_selection)
 
     sel_editor_free(&ed);
 }
+
+TEST(cmd_move_word_right_advances_and_clears_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    ed.cursor.row = 0;
+    ed.cursor.col = 0;
+
+    /* start a selection, then a plain word move must clear it */
+    Command sel_right = {CMD_SELECT_RIGHT, 0};
+    editor_execute(&ed, sel_right);
+    ASSERT_EQ(ed.selection.active, 1);
+
+    Command word_right = {CMD_MOVE_WORD_RIGHT, 0};
+    editor_execute(&ed, word_right);
+    ASSERT_EQ(ed.selection.active, 0);
+    ASSERT_EQ(ed.cursor.col, 5);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_move_word_left_retreats_and_clears_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    ed.cursor.row = 0;
+    ed.cursor.col = 11;
+
+    Command word_left = {CMD_MOVE_WORD_LEFT, 0};
+    editor_execute(&ed, word_left);
+    ASSERT_EQ(ed.selection.active, 0);
+    ASSERT_EQ(ed.cursor.col, 6);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_select_word_right_extends_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    ed.cursor.row = 0;
+    ed.cursor.col = 0;
+
+    Command sel_word_right = {CMD_SELECT_WORD_RIGHT, 0};
+    editor_execute(&ed, sel_word_right);
+
+    ASSERT_EQ(ed.selection.active, 1);
+    ASSERT_EQ(ed.selection.anchor_col, 0);
+    ASSERT_EQ(ed.cursor.col, 5);
+    ASSERT_EQ(ed.selection.cursor_col, 5);
+    /* the whole word "hello" is now selected */
+    ASSERT_EQ(selection_contains(&ed.selection, 0, 0), 1);
+    ASSERT_EQ(selection_contains(&ed.selection, 0, 4), 1);
+    ASSERT_EQ(selection_contains(&ed.selection, 0, 5), 0);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_select_word_left_extends_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    ed.cursor.row = 0;
+    ed.cursor.col = 11;
+
+    Command sel_word_left = {CMD_SELECT_WORD_LEFT, 0};
+    editor_execute(&ed, sel_word_left);
+
+    ASSERT_EQ(ed.selection.active, 1);
+    ASSERT_EQ(ed.selection.anchor_col, 11);
+    ASSERT_EQ(ed.cursor.col, 6);
+    /* the word "world" is now selected (columns 6..10) */
+    ASSERT_EQ(selection_contains(&ed.selection, 0, 6), 1);
+    ASSERT_EQ(selection_contains(&ed.selection, 0, 10), 1);
+
+    sel_editor_free(&ed);
+}
