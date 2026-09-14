@@ -12,6 +12,7 @@
 #include "test_cursor.c"
 #include "test_undo.c"
 #include "test_search.c"
+#include "test_selection.c"
 
 int main(void)
 {

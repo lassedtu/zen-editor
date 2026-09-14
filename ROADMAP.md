@@ -76,6 +76,7 @@ ze/
 - Commands
 - Undo and redo
 - Search
+- Text selection
 
 ---
 
@@ -139,6 +140,63 @@ Later on, maybe faster search algorithms, maybe regex.
 6. **Incremental search (stretch)**: update matches live as the user types each character in the search prompt.
 
 7. **Integration with command system**: new command types: `CMD_SEARCH_OPEN`, `CMD_SEARCH_NEXT`, `CMD_SEARCH_PREV`, `CMD_SEARCH_CLOSE`.
+
+---
+
+## Text selection
+
+> **Status: done.** The core keeps a selection with an anchor point and a
+> cursor point. Shift with the arrow keys, Shift+Home, and Shift+End extend
+> the selection. Ctrl+A selects the whole buffer. The renderer draws the
+> region with inverted video across one or more lines. A region deletion
+> records one grouped undo entry, so one undo restores the whole region.
+> Copy, cut, and paste come next in the Clipboard phase.
+
+The editor must let the user mark a region of text. A selection is the base for copy, cut, and delete-region. The core keeps the selection. The platform layer does not know about it.
+
+A selection has two points: the anchor and the cursor. The anchor is the position where the selection starts. The cursor is the position where the selection ends. The region is the text between these two points. The order of the two points can change, so the core must normalize them before it reads the region.
+
+### What needs to be implemented
+
+1. **Selection structure**: add a `Selection` struct to the editor state. The struct holds an `active` flag, the anchor position (row and column), and the cursor position (row and column). When `active` is 0, there is no selection.
+
+2. **Start a selection**: when the user starts to select, set the anchor to the current cursor position. Set `active` to 1. The cursor position of the selection follows the editor cursor.
+
+3. **Extend a selection**: when the user moves the cursor with a selection modifier, keep the anchor fixed and move the selection cursor with the editor cursor. Do not change the anchor.
+
+4. **Clear a selection**: when the user moves the cursor without the selection modifier, set `active` to 0. Also clear the selection after a cut or a delete-region.
+
+5. **Normalize the region**: add a function that returns the start point and the end point in reading order. The start point is the point that comes first in the buffer. The end point is the point that comes last. Callers use this function to read or delete the region.
+
+6. **Render the selection**: pass the normalized region to the renderer. The renderer draws the selected characters with inverted video, in the same way that it draws search matches. The selection can span more than one line. Draw the full region on each visible line.
+
+7. **Delete a region**: add a function that removes all text in the normalized region. The function joins the start line and the end line. This function records one grouped entry in the undo history, so one undo restores the full region.
+
+8. **Integration with command system**: new command types: `CMD_SELECT_LEFT`, `CMD_SELECT_RIGHT`, `CMD_SELECT_UP`, `CMD_SELECT_DOWN`, `CMD_SELECT_HOME`, `CMD_SELECT_END`, and `CMD_SELECT_ALL`. Add key bindings for these commands, for example Shift with the arrow keys.
+
+---
+
+## Clipboard (copy / cut / paste)
+
+The editor must copy, cut, and paste text. The clipboard is an internal buffer that holds the last copied or cut text. The core owns this buffer. The platform layer can later connect the internal clipboard to a system clipboard, but the core does not need the system clipboard to work.
+
+Copy and cut use the active selection. Paste inserts the clipboard text at the cursor position. All three actions must work with the undo history.
+
+### What needs to be implemented
+
+1. **Clipboard structure**: add a clipboard buffer to the editor state. The buffer holds the copied text and its length. The text can contain newline characters, because a selection can span more than one line. Start with an empty clipboard.
+
+2. **Copy**: when the user copies, read the normalized selection region. Copy the region text into the clipboard buffer. Do not change the buffer. Do not clear the selection. If there is no active selection, do nothing.
+
+3. **Cut**: when the user cuts, copy the region into the clipboard buffer in the same way as copy. Then delete the region from the buffer. Move the cursor to the start of the deleted region. Record one grouped entry in the undo history. Clear the selection.
+
+4. **Paste**: when the user pastes, insert the clipboard text at the cursor position. Split the current line at each newline character in the clipboard text. Move the cursor to the end of the inserted text. Record one grouped entry in the undo history. If the clipboard is empty, do nothing.
+
+5. **Undo support**: copy makes no change and does not touch the undo history. Cut and paste each record one grouped entry, so one undo reverses the full action.
+
+6. **Platform clipboard hook (stretch)**: add optional platform functions `platform_clipboard_get` and `platform_clipboard_set`. When the platform supports a system clipboard, copy and cut also write to it, and paste also reads from it. When the platform does not support it, the editor uses only the internal clipboard.
+
+7. **Integration with command system**: new command types: `CMD_COPY`, `CMD_CUT`, and `CMD_PASTE`. Add key bindings for these commands, for example `Ctrl+C`, `Ctrl+X`, and `Ctrl+V`.
 
 ---
 

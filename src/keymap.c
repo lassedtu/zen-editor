@@ -36,6 +36,34 @@ Command keymap_translate(int key)
         cmd.type = CMD_SEARCH_OPEN;
         break;
 
+    case KEY_CTRL('a'):
+        cmd.type = CMD_SELECT_ALL;
+        break;
+
+    case KEY_SHIFT_ARROW_UP:
+        cmd.type = CMD_SELECT_UP;
+        break;
+
+    case KEY_SHIFT_ARROW_DOWN:
+        cmd.type = CMD_SELECT_DOWN;
+        break;
+
+    case KEY_SHIFT_ARROW_LEFT:
+        cmd.type = CMD_SELECT_LEFT;
+        break;
+
+    case KEY_SHIFT_ARROW_RIGHT:
+        cmd.type = CMD_SELECT_RIGHT;
+        break;
+
+    case KEY_SHIFT_HOME:
+        cmd.type = CMD_SELECT_HOME;
+        break;
+
+    case KEY_SHIFT_END:
+        cmd.type = CMD_SELECT_END;
+        break;
+
     case KEY_ARROW_UP:
         cmd.type = CMD_MOVE_UP;
         break;

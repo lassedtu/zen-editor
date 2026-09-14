@@ -3,6 +3,7 @@
 #include "buffer.h"
 #include "cursor.h"
 #include "undo.h"
+#include "selection.h"
 
 /**
  * @file command.c
@@ -24,26 +25,32 @@ void editor_execute(Editor *ed, Command cmd)
         break;
 
     case CMD_MOVE_UP:
+        selection_clear(&ed->selection);
         cursor_move_up(&ed->cursor, ed->buffer);
         break;
 
     case CMD_MOVE_DOWN:
+        selection_clear(&ed->selection);
         cursor_move_down(&ed->cursor, ed->buffer);
         break;
 
     case CMD_MOVE_LEFT:
+        selection_clear(&ed->selection);
         cursor_move_left(&ed->cursor, ed->buffer);
         break;
 
     case CMD_MOVE_RIGHT:
+        selection_clear(&ed->selection);
         cursor_move_right(&ed->cursor, ed->buffer);
         break;
 
     case CMD_HOME:
+        selection_clear(&ed->selection);
         cursor_home(&ed->cursor);
         break;
 
     case CMD_END:
+        selection_clear(&ed->selection);
         cursor_end(&ed->cursor, ed->buffer);
         break;
 
@@ -69,6 +76,7 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_INSERT_CHAR:
     {
+        selection_clear(&ed->selection);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         buffer_insert_char(ed->buffer, row, col, (char)cmd.ch);
@@ -81,6 +89,7 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_DELETE_CHAR:
     {
+        selection_clear(&ed->selection);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         Line *line = &ed->buffer->lines[row];
@@ -98,6 +107,7 @@ void editor_execute(Editor *ed, Command cmd)
     }
 
     case CMD_BACKSPACE:
+        selection_clear(&ed->selection);
         if (ed->cursor.col > 0)
         {
             int row = ed->cursor.row;
@@ -126,6 +136,7 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_INSERT_NEWLINE:
     {
+        selection_clear(&ed->selection);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         buffer_insert_newline(ed->buffer, row, col);
@@ -177,6 +188,60 @@ void editor_execute(Editor *ed, Command cmd)
     case CMD_SEARCH_CLOSE:
         editor_search_close(ed);
         break;
+
+    case CMD_SELECT_LEFT:
+    case CMD_SELECT_RIGHT:
+    case CMD_SELECT_UP:
+    case CMD_SELECT_DOWN:
+    case CMD_SELECT_HOME:
+    case CMD_SELECT_END:
+    {
+        /* start a selection at the current cursor if none is active */
+        if (!ed->selection.active)
+        {
+            selection_start(&ed->selection, ed->cursor.row, ed->cursor.col);
+        }
+
+        /* move the cursor with the same logic as the plain movement command */
+        switch (cmd.type)
+        {
+        case CMD_SELECT_LEFT:
+            cursor_move_left(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_RIGHT:
+            cursor_move_right(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_UP:
+            cursor_move_up(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_DOWN:
+            cursor_move_down(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_HOME:
+            cursor_home(&ed->cursor);
+            break;
+        case CMD_SELECT_END:
+            cursor_end(&ed->cursor, ed->buffer);
+            break;
+        default:
+            break;
+        }
+
+        /* extend the selection to the new cursor position */
+        selection_set_cursor(&ed->selection, ed->cursor.row, ed->cursor.col);
+        break;
+    }
+
+    case CMD_SELECT_ALL:
+    {
+        int last_row = ed->buffer->num_lines - 1;
+        int last_col = ed->buffer->lines[last_row].len;
+        selection_start(&ed->selection, 0, 0);
+        selection_set_cursor(&ed->selection, last_row, last_col);
+        ed->cursor.row = last_row;
+        ed->cursor.col = last_col;
+        break;
+    }
 
     case CMD_SAVE:
         if (ed->filename)
