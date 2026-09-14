@@ -20,6 +20,36 @@
  * into a single word-level undo step.
  */
 
+/**
+ * @brief delete the active selection, if any, and move the cursor to its start.
+ *
+ * when a selection is active and not empty, this removes the selected region as
+ * one grouped undo step, moves the cursor to the start of the region, and
+ * clears the selection. an editing command calls this first so that a typed
+ * character, a newline, backspace, or delete replaces the selected text.
+ *
+ * @param ed pointer to the editor state.
+ * @return 1 if a region was deleted, 0 if there was no active selection.
+ */
+static int editor_delete_selection(Editor *ed)
+{
+    if (!ed->selection.active)
+        return 0;
+
+    int r, c;
+    int deleted = selection_delete_region(&ed->selection, ed->buffer,
+                                          &ed->history, &r, &c);
+    if (deleted)
+    {
+        ed->cursor.row = r;
+        ed->cursor.col = c;
+        cursor_clamp(&ed->cursor, ed->buffer);
+    }
+
+    selection_clear(&ed->selection);
+    return deleted;
+}
+
 void editor_execute(Editor *ed, Command cmd)
 {
     switch (cmd.type)
@@ -89,7 +119,8 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_INSERT_CHAR:
     {
-        selection_clear(&ed->selection);
+        /* a typed character replaces the selected text */
+        editor_delete_selection(ed);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         buffer_insert_char(ed->buffer, row, col, (char)cmd.ch);
@@ -102,7 +133,11 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_DELETE_CHAR:
     {
-        selection_clear(&ed->selection);
+        /* with a selection, Delete removes the selected text and nothing more */
+        if (editor_delete_selection(ed))
+        {
+            break;
+        }
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         Line *line = &ed->buffer->lines[row];
@@ -120,7 +155,11 @@ void editor_execute(Editor *ed, Command cmd)
     }
 
     case CMD_BACKSPACE:
-        selection_clear(&ed->selection);
+        /* with a selection, Backspace removes the selected text and stops */
+        if (editor_delete_selection(ed))
+        {
+            break;
+        }
         if (ed->cursor.col > 0)
         {
             int row = ed->cursor.row;
@@ -149,7 +188,8 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_INSERT_NEWLINE:
     {
-        selection_clear(&ed->selection);
+        /* Enter replaces the selected text with a line break */
+        editor_delete_selection(ed);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         buffer_insert_newline(ed->buffer, row, col);
@@ -312,18 +352,7 @@ void editor_execute(Editor *ed, Command cmd)
     {
         /* replace any active selection first so paste overwrites it, then
            insert the clipboard text as one grouped undo step. */
-        if (ed->selection.active)
-        {
-            int r, c;
-            if (selection_delete_region(&ed->selection, ed->buffer,
-                                        &ed->history, &r, &c))
-            {
-                ed->cursor.row = r;
-                ed->cursor.col = c;
-                cursor_clamp(&ed->cursor, ed->buffer);
-            }
-            selection_clear(&ed->selection);
-        }
+        editor_delete_selection(ed);
 
         int r, c;
         if (clipboard_paste(&ed->clipboard, ed->buffer, &ed->history,

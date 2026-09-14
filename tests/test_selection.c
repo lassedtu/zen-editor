@@ -528,3 +528,161 @@ TEST(cmd_select_word_left_extends_selection)
 
     sel_editor_free(&ed);
 }
+
+/* ------------------------------------------------------------------ */
+/* selection replacement on edit                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @brief compare a buffer line against an expected string.
+ * @param buf pointer to the Buffer.
+ * @param row the row index to read.
+ * @param expected the expected content of the line.
+ * @return 1 if the line matches, 0 otherwise.
+ */
+static int sel_line_equals(const Buffer *buf, int row, const char *expected)
+{
+    int len = (int)strlen(expected);
+    if (buf->lines[row].len != len)
+        return 0;
+    return memcmp(buf->lines[row].chars, expected, len) == 0;
+}
+
+TEST(cmd_insert_char_replaces_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    /* select "world" and type 'X' */
+    selection_start(&ed.selection, 0, 6);
+    selection_set_cursor(&ed.selection, 0, 11);
+
+    Command insert = {CMD_INSERT_CHAR, 'X'};
+    editor_execute(&ed, insert);
+
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello X"));
+    ASSERT_EQ(ed.selection.active, 0);
+    ASSERT_EQ(ed.cursor.col, 7);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_backspace_deletes_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    /* select " world" and press Backspace */
+    selection_start(&ed.selection, 0, 5);
+    selection_set_cursor(&ed.selection, 0, 11);
+
+    Command backspace = {CMD_BACKSPACE, 0};
+    editor_execute(&ed, backspace);
+
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello"));
+    ASSERT_EQ(ed.selection.active, 0);
+    ASSERT_EQ(ed.cursor.col, 5);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_backspace_selection_removes_only_the_region)
+{
+    /* a reversed selection (cursor before anchor) must still delete just the
+       region and not an extra character */
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "abcdef");
+    selection_start(&ed.selection, 0, 4); /* anchor after the region */
+    selection_set_cursor(&ed.selection, 0, 1);
+
+    Command backspace = {CMD_BACKSPACE, 0};
+    editor_execute(&ed, backspace);
+
+    ASSERT(sel_line_equals(ed.buffer, 0, "aef"));
+    ASSERT_EQ(ed.cursor.col, 1);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_delete_char_deletes_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    selection_start(&ed.selection, 0, 5);
+    selection_set_cursor(&ed.selection, 0, 11);
+
+    Command delete = {CMD_DELETE_CHAR, 0};
+    editor_execute(&ed, delete);
+
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello"));
+    ASSERT_EQ(ed.selection.active, 0);
+    ASSERT_EQ(ed.cursor.col, 5);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_newline_replaces_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    /* select " " between the words and press Enter -> split into two lines */
+    selection_start(&ed.selection, 0, 5);
+    selection_set_cursor(&ed.selection, 0, 6);
+
+    Command newline = {CMD_INSERT_NEWLINE, 0};
+    editor_execute(&ed, newline);
+
+    ASSERT_EQ(ed.buffer->num_lines, 2);
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello"));
+    ASSERT(sel_line_equals(ed.buffer, 1, "world"));
+    ASSERT_EQ(ed.selection.active, 0);
+    ASSERT_EQ(ed.cursor.row, 1);
+    ASSERT_EQ(ed.cursor.col, 0);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_insert_char_replaces_multi_line_selection)
+{
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "abc\ndef\nghi");
+    /* select from (0,1) to (2,2) and type 'Z' -> "aZi" on one line */
+    selection_start(&ed.selection, 0, 1);
+    selection_set_cursor(&ed.selection, 2, 2);
+
+    Command insert = {CMD_INSERT_CHAR, 'Z'};
+    editor_execute(&ed, insert);
+
+    ASSERT_EQ(ed.buffer->num_lines, 1);
+    ASSERT(sel_line_equals(ed.buffer, 0, "aZi"));
+    ASSERT_EQ(ed.selection.active, 0);
+
+    sel_editor_free(&ed);
+}
+
+TEST(cmd_insert_char_replace_selection_is_undoable)
+{
+    /* replacing a selection is two grouped steps (delete + insert), so two
+       undos restore the original text */
+    Editor ed;
+    sel_editor_init(&ed);
+    fill_buffer(ed.buffer, "hello world");
+    selection_start(&ed.selection, 0, 6);
+    selection_set_cursor(&ed.selection, 0, 11);
+
+    Command insert = {CMD_INSERT_CHAR, 'X'};
+    editor_execute(&ed, insert);
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello X"));
+
+    Command undo = {CMD_UNDO, 0};
+    editor_execute(&ed, undo); /* undo the inserted 'X' */
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello "));
+    editor_execute(&ed, undo); /* undo the region deletion */
+    ASSERT(sel_line_equals(ed.buffer, 0, "hello world"));
+
+    sel_editor_free(&ed);
+}
