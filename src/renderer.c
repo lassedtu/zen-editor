@@ -2,6 +2,7 @@
 
 #include "platform_terminal.h"
 #include "search.h"
+#include "selection.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -68,8 +69,84 @@ static void draw_line_highlighted(const Line *line, int screen_cols,
     }
 }
 
+/**
+ * @brief draw a single line, inverting the part that lies in the selection.
+ *
+ * draws the characters of the line up to screen_cols. the characters whose
+ * columns lie inside the selection region are wrapped in inverted-video
+ * escapes. the function computes the selected span on this row from the
+ * normalized region: on the first row the span starts at the region start
+ * column, on the last row it ends at the region end column, and full middle
+ * rows are selected end to end.
+ *
+ * @param line pointer to the line to draw.
+ * @param file_row the buffer row index of this line.
+ * @param screen_cols maximum number of columns to draw.
+ * @param sel pointer to the active selection.
+ */
+static void draw_line_selected(const Line *line, int file_row, int screen_cols,
+                               const Selection *sel)
+{
+    int len = line->len;
+    if (len > screen_cols)
+    {
+        len = screen_cols;
+    }
+
+    int sr, sc, er, ec;
+    selection_normalize(sel, &sr, &sc, &er, &ec);
+
+    /* compute the selected column span [sel_start, sel_end) on this row */
+    int sel_start = (file_row == sr) ? sc : 0;
+    int sel_end = (file_row == er) ? ec : len;
+
+    if (sel_start < 0)
+        sel_start = 0;
+    if (sel_end > len)
+        sel_end = len;
+
+    /* plain text before the selected span */
+    if (sel_start > 0)
+    {
+        platform_terminal_write(line->chars, sel_start);
+    }
+
+    /* the selected span, drawn with inverted video */
+    if (sel_end > sel_start)
+    {
+        platform_terminal_write(ZE_INVERT_ON, (int)strlen(ZE_INVERT_ON));
+        platform_terminal_write(line->chars + sel_start, sel_end - sel_start);
+        platform_terminal_write(ZE_INVERT_OFF, (int)strlen(ZE_INVERT_OFF));
+    }
+
+    /* plain text after the selected span */
+    if (sel_end < len)
+    {
+        platform_terminal_write(line->chars + sel_end, len - sel_end);
+    }
+}
+
+/**
+ * @brief test whether the selection touches a given buffer row.
+ * @param sel pointer to the selection.
+ * @param file_row the buffer row index to test.
+ * @return 1 if the row is within the normalized region rows, 0 otherwise.
+ */
+static int selection_touches_row(const Selection *sel, int file_row)
+{
+    if (sel == NULL || !sel->active)
+        return 0;
+
+    int sr, sc, er, ec;
+    selection_normalize(sel, &sr, &sc, &er, &ec);
+    (void)sc;
+    (void)ec;
+    return file_row >= sr && file_row <= er;
+}
+
 void renderer_draw(Buffer *buf, Cursor *cur, int screen_rows, int screen_cols,
-                   int scroll_offset, const char *highlight)
+                   int scroll_offset, const char *highlight,
+                   const Selection *sel)
 {
     /* hide cursor during redraw */
     platform_terminal_write("\x1b[?25l", 6);
@@ -85,7 +162,16 @@ void renderer_draw(Buffer *buf, Cursor *cur, int screen_rows, int screen_cols,
 
         if (file_row < buf->num_lines)
         {
-            draw_line_highlighted(&buf->lines[file_row], screen_cols, highlight);
+            if (selection_touches_row(sel, file_row))
+            {
+                draw_line_selected(&buf->lines[file_row], file_row,
+                                   screen_cols, sel);
+            }
+            else
+            {
+                draw_line_highlighted(&buf->lines[file_row], screen_cols,
+                                      highlight);
+            }
         }
         else
         {

@@ -32,10 +32,18 @@ The binary is output to `build/ze`.
 | Key        | Action                  |
 |------------|-------------------------|
 | Arrow keys | Move cursor             |
+| Alt+Left / Alt+Right | Move by word  |
 | Home / End | Jump to line start/end  |
 | Enter      | Insert new line         |
 | Backspace  | Delete character before |
 | Delete     | Delete character at     |
+| Shift+Arrow | Select text            |
+| Alt+Shift+Left / Alt+Shift+Right | Select by word |
+| Shift+Home / Shift+End | Select to line start/end |
+| Ctrl+A     | Select all              |
+| Ctrl+C     | Copy selection          |
+| Ctrl+X     | Cut selection           |
+| Ctrl+V     | Paste                   |
 | Ctrl+Z     | Undo                    |
 | Ctrl+Y     | Redo                    |
 | Ctrl+F     | Search                  |
@@ -44,6 +52,22 @@ The binary is output to `build/ze`.
 
 While searching: type to filter, Enter keeps the match, Esc cancels, and the
 arrow keys (or Ctrl+N / Ctrl+P) jump between matches.
+
+### macOS Command Key
+
+The Command key does not reach a terminal program. The terminal emulator
+handles it and does not send a byte for it. So the editor cannot bind
+Command+C, Command+V, Command+Z, or Command+Y directly. Use the Control keys
+above, or map the Command shortcuts in your terminal emulator so that each
+Command combination sends the matching Control byte (for example, map
+Command+C to send Control+C). Command+Q closes the terminal window and cannot
+be remapped safely, so quit with Control+Q.
+
+The editor reads word motion from the Option (Alt) key. It accepts the two
+common forms that terminals send: the xterm modified-arrow sequence and the
+Meta "Option b" / "Option f" sequence. In Terminal.app, enable "Use Option as
+Meta key" in the profile keyboard settings so that Option+Left and
+Option+Right send word motion.
 
 ## Project Structure
 
@@ -58,6 +82,8 @@ ze/
 │   ├── command.c       Command execution
 │   ├── keymap.c        Key-to-command translation
 │   ├── search.c        Buffer search (match finding, next/prev)
+│   ├── selection.c     Text selection state and region operations
+│   ├── clipboard.c     Clipboard buffer and paste operation
 │   └── undo.c          Undo/redo history
 ├── include/
 │   ├── keys.h          Centralized key code definitions
@@ -85,8 +111,10 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 6 — Editor Commands
 - [x] Phase 7 — Undo and Redo
 - [x] Phase 8 — Search
-- [ ] Phase 9 — Configuration
-- [ ] Phase 10 — Syntax Highlighting
+- [x] Phase 9 — Text Selection
+- [x] Phase 10 — Clipboard (Copy / Cut / Paste)
+- [ ] Phase 11 — Configuration
+- [ ] Phase 12 — Syntax Highlighting
 
 ## Contributing
 
