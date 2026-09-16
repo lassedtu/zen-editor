@@ -25,6 +25,14 @@ int editor_init(Editor *ed, const char *filename)
     ed->search.query[0] = '\0';
     ed->search.query_len = 0;
 
+    selection_clear(&ed->selection);
+    clipboard_init(&ed->clipboard);
+
+    /* set the default settings, then read the file of the user to change them */
+    config_init(&ed->config);
+    config_load_default(&ed->config);
+    ed->edits_since_save = 0;
+
     if (platform_terminal_init() != 0)
     {
         buffer_free(ed->buffer);
@@ -122,7 +130,7 @@ static void editor_process_key(Editor *ed)
         return;
     }
 
-    Command cmd = keymap_translate(key);
+    Command cmd = keymap_translate_config(&ed->config, key);
     editor_execute(ed, cmd);
 }
 
@@ -143,7 +151,9 @@ void editor_run(Editor *ed)
 
         // draw the buffer and cursor
         renderer_draw(ed->buffer, &ed->cursor, ed->screen_rows,
-                      ed->screen_cols, ed->scroll_offset, highlight);
+                      ed->screen_cols, ed->scroll_offset, highlight,
+                      ed->selection.active ? &ed->selection : NULL,
+                      &ed->config);
 
         if (ed->search.active)
         {
@@ -161,12 +171,19 @@ void editor_run(Editor *ed)
         {
             // draw the status bar
             renderer_draw_status(ed->filename, ed->buffer->num_lines,
-                                 ed->cursor.row, ed->screen_rows);
+                                 ed->cursor.row, ed->screen_rows, &ed->config);
         }
 
-        // reposition cursor after drawing status
+        // reposition cursor after drawing status, at the visual column
+        int cursor_vcol = ed->cursor.col;
+        if (ed->cursor.row >= 0 && ed->cursor.row < ed->buffer->num_lines)
+        {
+            cursor_vcol = renderer_visual_col(&ed->buffer->lines[ed->cursor.row],
+                                              ed->cursor.col,
+                                              ed->config.tab_size);
+        }
         platform_terminal_move_cursor(ed->cursor.row - ed->scroll_offset,
-                                      ed->cursor.col);
+                                      cursor_vcol);
 
         // flush the terminal output and process the next key press
         platform_terminal_flush();
@@ -179,5 +196,6 @@ void editor_cleanup(Editor *ed)
     platform_terminal_cleanup();
     buffer_free(ed->buffer);
     history_free(&ed->history);
+    clipboard_free(&ed->clipboard);
     free(ed->filename);
 }

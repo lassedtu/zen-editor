@@ -12,6 +12,9 @@
 #include "test_cursor.c"
 #include "test_undo.c"
 #include "test_search.c"
+#include "test_selection.c"
+#include "test_clipboard.c"
+#include "test_config.c"
 
 int main(void)
 {

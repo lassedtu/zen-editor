@@ -3,6 +3,11 @@
 #include "buffer.h"
 #include "cursor.h"
 #include "undo.h"
+#include "selection.h"
+#include "clipboard.h"
+#include "editor.h"
+
+#include <stdlib.h>
 
 /**
  * @file command.c
@@ -16,6 +21,89 @@
  * into a single word-level undo step.
  */
 
+/**
+ * @brief delete the active selection, if any, and move the cursor to its start.
+ *
+ * when a selection is active and not empty, this removes the selected region as
+ * one grouped undo step, moves the cursor to the start of the region, and
+ * clears the selection. an editing command calls this first so that a typed
+ * character, a newline, backspace, or delete replaces the selected text.
+ *
+ * @param ed pointer to the editor state.
+ * @return 1 if a region was deleted, 0 if there was no active selection.
+ */
+static int editor_delete_selection(Editor *ed)
+{
+    if (!ed->selection.active)
+        return 0;
+
+    int r, c;
+    int deleted = selection_delete_region(&ed->selection, ed->buffer,
+                                          &ed->history, &r, &c);
+    if (deleted)
+    {
+        ed->cursor.row = r;
+        ed->cursor.col = c;
+        cursor_clamp(&ed->cursor, ed->buffer);
+    }
+
+    selection_clear(&ed->selection);
+    return deleted;
+}
+
+/**
+ * @brief test whether a command changes the text of the buffer.
+ *
+ * the function returns 1 for a command that inserts, deletes, or moves text.
+ * it returns 0 for a command that only moves the cursor, changes the selection,
+ * copies text, or controls the search. the editor uses this to count the edits
+ * for auto-save.
+ *
+ * @param type the command type to test.
+ * @return 1 when the command changes the text, 0 when it does not.
+ */
+static int command_changes_text(CommandType type)
+{
+    switch (type)
+    {
+    case CMD_INSERT_CHAR:
+    case CMD_DELETE_CHAR:
+    case CMD_BACKSPACE:
+    case CMD_INSERT_NEWLINE:
+    case CMD_CUT:
+    case CMD_PASTE:
+    case CMD_UNDO:
+    case CMD_REDO:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+/**
+ * @brief save the file when the edit count reaches the auto-save count.
+ *
+ * the function does nothing when auto-save is off, or when there is no file
+ * name. auto-save is off when the auto-save count is 0. the function saves the
+ * file and sets the edit count back to 0 when the edit count reaches the
+ * auto-save count.
+ *
+ * @param ed pointer to the editor state.
+ */
+static void editor_auto_save(Editor *ed)
+{
+    if (ed->config.auto_save_edits <= 0 || ed->filename == NULL)
+    {
+        return;
+    }
+
+    if (ed->edits_since_save >= ed->config.auto_save_edits)
+    {
+        buffer_save(ed->buffer, ed->filename);
+        ed->edits_since_save = 0;
+    }
+}
+
 void editor_execute(Editor *ed, Command cmd)
 {
     switch (cmd.type)
@@ -24,26 +112,42 @@ void editor_execute(Editor *ed, Command cmd)
         break;
 
     case CMD_MOVE_UP:
+        selection_clear(&ed->selection);
         cursor_move_up(&ed->cursor, ed->buffer);
         break;
 
     case CMD_MOVE_DOWN:
+        selection_clear(&ed->selection);
         cursor_move_down(&ed->cursor, ed->buffer);
         break;
 
     case CMD_MOVE_LEFT:
+        selection_clear(&ed->selection);
         cursor_move_left(&ed->cursor, ed->buffer);
         break;
 
     case CMD_MOVE_RIGHT:
+        selection_clear(&ed->selection);
         cursor_move_right(&ed->cursor, ed->buffer);
         break;
 
+    case CMD_MOVE_WORD_LEFT:
+        selection_clear(&ed->selection);
+        cursor_move_word_left(&ed->cursor, ed->buffer);
+        break;
+
+    case CMD_MOVE_WORD_RIGHT:
+        selection_clear(&ed->selection);
+        cursor_move_word_right(&ed->cursor, ed->buffer);
+        break;
+
     case CMD_HOME:
+        selection_clear(&ed->selection);
         cursor_home(&ed->cursor);
         break;
 
     case CMD_END:
+        selection_clear(&ed->selection);
         cursor_end(&ed->cursor, ed->buffer);
         break;
 
@@ -69,6 +173,8 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_INSERT_CHAR:
     {
+        /* a typed character replaces the selected text */
+        editor_delete_selection(ed);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         buffer_insert_char(ed->buffer, row, col, (char)cmd.ch);
@@ -81,6 +187,11 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_DELETE_CHAR:
     {
+        /* with a selection, Delete removes the selected text and nothing more */
+        if (editor_delete_selection(ed))
+        {
+            break;
+        }
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         Line *line = &ed->buffer->lines[row];
@@ -98,6 +209,11 @@ void editor_execute(Editor *ed, Command cmd)
     }
 
     case CMD_BACKSPACE:
+        /* with a selection, Backspace removes the selected text and stops */
+        if (editor_delete_selection(ed))
+        {
+            break;
+        }
         if (ed->cursor.col > 0)
         {
             int row = ed->cursor.row;
@@ -126,6 +242,8 @@ void editor_execute(Editor *ed, Command cmd)
 
     case CMD_INSERT_NEWLINE:
     {
+        /* Enter replaces the selected text with a line break */
+        editor_delete_selection(ed);
         int row = ed->cursor.row;
         int col = ed->cursor.col;
         buffer_insert_newline(ed->buffer, row, col);
@@ -178,15 +296,147 @@ void editor_execute(Editor *ed, Command cmd)
         editor_search_close(ed);
         break;
 
+    case CMD_SELECT_LEFT:
+    case CMD_SELECT_RIGHT:
+    case CMD_SELECT_UP:
+    case CMD_SELECT_DOWN:
+    case CMD_SELECT_HOME:
+    case CMD_SELECT_END:
+    case CMD_SELECT_WORD_LEFT:
+    case CMD_SELECT_WORD_RIGHT:
+    {
+        /* start a selection at the current cursor if none is active */
+        if (!ed->selection.active)
+        {
+            selection_start(&ed->selection, ed->cursor.row, ed->cursor.col);
+        }
+
+        /* move the cursor with the same logic as the plain movement command */
+        switch (cmd.type)
+        {
+        case CMD_SELECT_LEFT:
+            cursor_move_left(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_RIGHT:
+            cursor_move_right(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_UP:
+            cursor_move_up(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_DOWN:
+            cursor_move_down(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_HOME:
+            cursor_home(&ed->cursor);
+            break;
+        case CMD_SELECT_END:
+            cursor_end(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_WORD_LEFT:
+            cursor_move_word_left(&ed->cursor, ed->buffer);
+            break;
+        case CMD_SELECT_WORD_RIGHT:
+            cursor_move_word_right(&ed->cursor, ed->buffer);
+            break;
+        default:
+            break;
+        }
+
+        /* extend the selection to the new cursor position */
+        selection_set_cursor(&ed->selection, ed->cursor.row, ed->cursor.col);
+        break;
+    }
+
+    case CMD_SELECT_ALL:
+    {
+        int last_row = ed->buffer->num_lines - 1;
+        int last_col = ed->buffer->lines[last_row].len;
+        selection_start(&ed->selection, 0, 0);
+        selection_set_cursor(&ed->selection, last_row, last_col);
+        ed->cursor.row = last_row;
+        ed->cursor.col = last_col;
+        break;
+    }
+
+    case CMD_COPY:
+    {
+        /* copy the selected region into the clipboard; the buffer is unchanged
+           and the selection stays active. no undo entry is recorded. */
+        if (ed->selection.active)
+        {
+            int len = 0;
+            char *text = selection_copy_region(&ed->selection, ed->buffer, &len);
+            if (text)
+            {
+                clipboard_set(&ed->clipboard, text, len);
+                free(text);
+            }
+        }
+        break;
+    }
+
+    case CMD_CUT:
+    {
+        /* copy the region, then delete it as one grouped undo step, then move
+           the cursor to the region start and clear the selection. */
+        if (ed->selection.active)
+        {
+            int len = 0;
+            char *text = selection_copy_region(&ed->selection, ed->buffer, &len);
+            if (text)
+            {
+                clipboard_set(&ed->clipboard, text, len);
+                free(text);
+
+                int r, c;
+                if (selection_delete_region(&ed->selection, ed->buffer,
+                                            &ed->history, &r, &c))
+                {
+                    ed->cursor.row = r;
+                    ed->cursor.col = c;
+                    cursor_clamp(&ed->cursor, ed->buffer);
+                }
+            }
+            selection_clear(&ed->selection);
+        }
+        break;
+    }
+
+    case CMD_PASTE:
+    {
+        /* replace any active selection first so paste overwrites it, then
+           insert the clipboard text as one grouped undo step. */
+        editor_delete_selection(ed);
+
+        int r, c;
+        if (clipboard_paste(&ed->clipboard, ed->buffer, &ed->history,
+                            ed->cursor.row, ed->cursor.col, &r, &c))
+        {
+            ed->cursor.row = r;
+            ed->cursor.col = c;
+            cursor_clamp(&ed->cursor, ed->buffer);
+        }
+        break;
+    }
+
     case CMD_SAVE:
         if (ed->filename)
         {
             buffer_save(ed->buffer, ed->filename);
+            ed->edits_since_save = 0;
         }
         break;
 
     case CMD_QUIT:
         ed->running = 0;
         break;
+    }
+
+    /* count an edit and save the file when the count reaches the auto-save
+       count. a command that does not change the text does not count. */
+    if (command_changes_text(cmd.type))
+    {
+        ed->edits_since_save++;
+        editor_auto_save(ed);
     }
 }
