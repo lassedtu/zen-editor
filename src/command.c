@@ -5,6 +5,7 @@
 #include "undo.h"
 #include "selection.h"
 #include "clipboard.h"
+#include "editor.h"
 
 #include <stdlib.h>
 
@@ -48,6 +49,59 @@ static int editor_delete_selection(Editor *ed)
 
     selection_clear(&ed->selection);
     return deleted;
+}
+
+/**
+ * @brief test whether a command changes the text of the buffer.
+ *
+ * the function returns 1 for a command that inserts, deletes, or moves text.
+ * it returns 0 for a command that only moves the cursor, changes the selection,
+ * copies text, or controls the search. the editor uses this to count the edits
+ * for auto-save.
+ *
+ * @param type the command type to test.
+ * @return 1 when the command changes the text, 0 when it does not.
+ */
+static int command_changes_text(CommandType type)
+{
+    switch (type)
+    {
+    case CMD_INSERT_CHAR:
+    case CMD_DELETE_CHAR:
+    case CMD_BACKSPACE:
+    case CMD_INSERT_NEWLINE:
+    case CMD_CUT:
+    case CMD_PASTE:
+    case CMD_UNDO:
+    case CMD_REDO:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+/**
+ * @brief save the file when the edit count reaches the auto-save count.
+ *
+ * the function does nothing when auto-save is off, or when there is no file
+ * name. auto-save is off when the auto-save count is 0. the function saves the
+ * file and sets the edit count back to 0 when the edit count reaches the
+ * auto-save count.
+ *
+ * @param ed pointer to the editor state.
+ */
+static void editor_auto_save(Editor *ed)
+{
+    if (ed->config.auto_save_edits <= 0 || ed->filename == NULL)
+    {
+        return;
+    }
+
+    if (ed->edits_since_save >= ed->config.auto_save_edits)
+    {
+        buffer_save(ed->buffer, ed->filename);
+        ed->edits_since_save = 0;
+    }
 }
 
 void editor_execute(Editor *ed, Command cmd)
@@ -369,11 +423,20 @@ void editor_execute(Editor *ed, Command cmd)
         if (ed->filename)
         {
             buffer_save(ed->buffer, ed->filename);
+            ed->edits_since_save = 0;
         }
         break;
 
     case CMD_QUIT:
         ed->running = 0;
         break;
+    }
+
+    /* count an edit and save the file when the count reaches the auto-save
+       count. a command that does not change the text does not count. */
+    if (command_changes_text(cmd.type))
+    {
+        ed->edits_since_save++;
+        editor_auto_save(ed);
     }
 }

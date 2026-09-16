@@ -6,6 +6,7 @@
 #include "undo.h"
 #include "selection.h"
 #include "clipboard.h"
+#include "config.h"
 
 /**
  * @file editor.h
@@ -37,8 +38,12 @@ typedef struct
 /**
  * @struct Editor
  * @brief represents the state of the text editor.
+ *
+ * the typedef for this struct is in command.h, so the command layer can name a
+ * pointer to the Editor without this full definition. this file gives the full
+ * struct.
  */
-typedef struct
+struct Editor
 {
     Buffer *buffer;    // pointer to the text buffer
     Cursor cursor;     // current position of the cursor in the buffer
@@ -51,7 +56,9 @@ typedef struct
     Search search;     // search prompt and query state
     Selection selection; // active text selection region
     Clipboard clipboard; // internal copy/cut/paste buffer
-} Editor;
+    Config config;       // user settings: tab size, theme, bindings, auto-save
+    int edits_since_save; // number of edits after the last save, for auto-save
+};
 
 /**
  * @brief initialize the editor state, including buffer, cursor, and terminal.

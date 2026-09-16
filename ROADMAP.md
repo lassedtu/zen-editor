@@ -78,6 +78,7 @@ ze/
 - Search
 - Text selection
 - Clipboard (copy / cut / paste)
+- Configuration
 
 ---
 
@@ -213,6 +214,21 @@ Copy and cut use the active selection. Paste inserts the clipboard text at the c
 ---
 
 ## Configuration
+
+> **Status: done.** The editor core owns a `Config` struct with defaults (tab
+> size 4, auto-save off, terminal colors). At startup it reads `~/.zerc`, a
+> simple `key = value` text file, and overrides the defaults. Lines that start
+> with `#` are comments; blank lines and unknown keys are skipped, so a bad
+> line keeps the current value. Supported settings: `tab_size`, `auto_save`
+> (edit count; 0 turns it off), and the theme colors `color_foreground`,
+> `color_background`, `color_status_bar`, `color_line_numbers`, and
+> `color_search_highlight` (ANSI SGR numbers). Keys are rebindable with
+> `bind <key> = <command>` lines; the keymap reads the bindings before the
+> built-in map. The renderer expands tabs to the configured width and applies
+> the theme colors, and the cursor tracks the visual column across tabs.
+> Auto-save is edit-count based: every text-changing command counts one edit,
+> and the file is saved when the count reaches `auto_save`. Runtime reload of
+> the file remains future work.
 
 User-facing config options:
 

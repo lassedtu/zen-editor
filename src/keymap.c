@@ -1,5 +1,6 @@
 #include "keymap.h"
 #include "keys.h"
+#include "config.h"
 
 /**
  * @file keymap.c
@@ -160,4 +161,18 @@ Command keymap_translate(int key)
     }
 
     return cmd;
+}
+
+Command keymap_translate_config(const Config *cfg, int key)
+{
+    /* look in the bindings of the user first */
+    CommandType type = config_command_for_key(cfg, key);
+    if (type != CMD_NONE)
+    {
+        Command cmd = {type, 0};
+        return cmd;
+    }
+
+    /* use the built-in key map for a key that the user did not bind */
+    return keymap_translate(key);
 }

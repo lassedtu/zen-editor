@@ -1,8 +1,6 @@
 #ifndef ZE_COMMAND_H
 #define ZE_COMMAND_H
 
-#include "editor.h"
-
 /**
  * @file command.h
  * @brief command types and execution for the editor.
@@ -11,6 +9,12 @@
  * represented as a Command, enabling decoupled key bindings, future undo/redo
  * recording, and macro support.
  */
+
+/* forward declaration: the command layer only needs a pointer to the Editor,
+   so it does not include editor.h. this also stops an include cycle, because
+   editor.h reads config.h and config.h reads this header. */
+struct Editor;
+typedef struct Editor Editor;
 
 /**
  * @enum CommandType

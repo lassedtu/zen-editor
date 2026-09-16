@@ -69,6 +69,38 @@ Meta "Option b" / "Option f" sequence. In Terminal.app, enable "Use Option as
 Meta key" in the profile keyboard settings so that Option+Left and
 Option+Right send word motion.
 
+## Configuration
+
+The editor reads settings from `~/.zerc` at startup. The file is optional; the
+editor uses sensible defaults when the file is not there. Each line holds one
+setting in the form `key = value`. Lines that start with `#` are comments.
+Blank lines and unknown keys are skipped.
+
+```sh
+# tab width in spaces (1..16)
+tab_size = 4
+
+# save the file after this many edits; 0 turns auto-save off
+auto_save = 0
+
+# theme colors as ANSI SGR numbers; leave a value out to keep the terminal color
+color_foreground = 37
+color_background = 40
+color_status_bar = 7
+color_line_numbers = 90
+color_search_highlight = 33
+
+# rebind a key to a command
+bind ctrl+q = quit
+bind ctrl+s = save
+```
+
+Supported commands for `bind`: `quit`, `save`, `undo`, `redo`, `search`,
+`select_all`, `copy`, `cut`, `paste`, `home`, `end`, `page_up`, `page_down`.
+Supported key names: `ctrl+a` .. `ctrl+z`, `home`, `end`, `page_up`,
+`page_down`, and `delete`. A binding for a key that already has a default
+replaces the default.
+
 ## Project Structure
 
 ```
@@ -84,11 +116,13 @@ ze/
 │   ├── search.c        Buffer search (match finding, next/prev)
 │   ├── selection.c     Text selection state and region operations
 │   ├── clipboard.c     Clipboard buffer and paste operation
+│   ├── config.c        User configuration (defaults, ~/.zerc parser)
 │   └── undo.c          Undo/redo history
 ├── include/
 │   ├── keys.h          Centralized key code definitions
 │   ├── command.h       Command types and execution
 │   ├── keymap.h        Key translation interface
+│   ├── config.h        Config struct, theme, and key bindings
 │   ├── undo.h          Undo/redo history interface
 │   └── ...             Buffer, cursor, renderer, platform headers
 ├── platforms/
@@ -113,7 +147,7 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 8 — Search
 - [x] Phase 9 — Text Selection
 - [x] Phase 10 — Clipboard (Copy / Cut / Paste)
-- [ ] Phase 11 — Configuration
+- [x] Phase 11 — Configuration
 - [ ] Phase 12 — Syntax Highlighting
 
 ## Contributing
