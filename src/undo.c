@@ -187,6 +187,34 @@ void history_record(History *h, UndoOp op, int cursor_row, int cursor_col,
     history_push_entry(h, entry);
 }
 
+void history_record_group(History *h, const UndoOp *ops, int num_ops,
+                          int cursor_row, int cursor_col,
+                          int redo_row, int redo_col)
+{
+    /* a grouped edit ends any coalescing run */
+    history_end_run(h);
+
+    if (num_ops <= 0)
+        return;
+
+    UndoEntry entry;
+    entry.ops = NULL;
+    entry.num_ops = 0;
+    entry.cap = 0;
+    entry.is_char_run = 0;
+    entry.cursor_row = cursor_row;
+    entry.cursor_col = cursor_col;
+    entry.redo_row = redo_row;
+    entry.redo_col = redo_col;
+
+    for (int i = 0; i < num_ops; i++)
+    {
+        entry_push_op(&entry, ops[i]);
+    }
+
+    history_push_entry(h, entry);
+}
+
 /**
  * @brief decide whether a typed character can extend the current run.
  *

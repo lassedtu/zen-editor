@@ -3,6 +3,7 @@
 
 #include "buffer.h"
 #include "cursor.h"
+#include "selection.h"
 
 /**
  * @file renderer.h
@@ -19,9 +20,11 @@
  * @param screen_cols number of columns in the terminal
  * @param scroll_offset the number of lines to scroll from the top of the buffer
  * @param highlight optional query string whose matches are highlighted; NULL or empty disables highlighting
+ * @param sel optional active selection whose region is drawn with inverted video; NULL or inactive disables selection drawing
  */
 void renderer_draw(Buffer *buf, Cursor *cur, int screen_rows, int screen_cols,
-                   int scroll_offset, const char *highlight);
+                   int scroll_offset, const char *highlight,
+                   const Selection *sel);
 
 /**
  * @brief draw the status bar at the bottom of the screen, showing filename, line count, and cursor position

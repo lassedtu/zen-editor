@@ -130,6 +130,29 @@ void history_record(History *h, UndoOp op, int cursor_row, int cursor_col,
                     int redo_row, int redo_col);
 
 /**
+ * @brief record several inverse operations as one grouped undo entry.
+ *
+ * builds a single entry that holds all supplied operations. one undo reverses
+ * the whole group in one step. use this for a logical edit that maps to more
+ * than one low-level operation, for example the deletion of a selected region.
+ * the operations must be supplied in forward order (the order in which the
+ * original edit changed the buffer). the history stores them so the group is
+ * reversed as one atomic action. the redo stack is cleared, and any open
+ * character-insert run is ended.
+ *
+ * @param h pointer to the History.
+ * @param ops pointer to the array of inverse operations to record.
+ * @param num_ops the number of operations in the array.
+ * @param cursor_row cursor row to restore when the edit is undone (pre-edit).
+ * @param cursor_col cursor col to restore when the edit is undone (pre-edit).
+ * @param redo_row cursor row to restore when the edit is redone (post-edit).
+ * @param redo_col cursor col to restore when the edit is redone (post-edit).
+ */
+void history_record_group(History *h, const UndoOp *ops, int num_ops,
+                          int cursor_row, int cursor_col,
+                          int redo_row, int redo_col);
+
+/**
  * @brief record a typed character, coalescing it with the previous run.
  *
  * consecutive characters typed contiguously merge into the top undo entry so a

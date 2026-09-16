@@ -203,6 +203,35 @@ int platform_terminal_read_key(void)
                         return KEY_END;
                     }
                 }
+                else if (seq[1] == '1' && seq[2] == ';')
+                {
+                    /* modified navigation key: "\x1b[1;<mod><final>". read the
+                       modifier and the final byte. modifier 2 is Shift. */
+                    char mod, final;
+                    if (read(STDIN_FILENO, &mod, 1) != 1)
+                        return '\x1b';
+                    if (read(STDIN_FILENO, &final, 1) != 1)
+                        return '\x1b';
+
+                    if (mod == '2')
+                    {
+                        switch (final)
+                        {
+                        case 'A':
+                            return KEY_SHIFT_ARROW_UP;
+                        case 'B':
+                            return KEY_SHIFT_ARROW_DOWN;
+                        case 'C':
+                            return KEY_SHIFT_ARROW_RIGHT;
+                        case 'D':
+                            return KEY_SHIFT_ARROW_LEFT;
+                        case 'H':
+                            return KEY_SHIFT_HOME;
+                        case 'F':
+                            return KEY_SHIFT_END;
+                        }
+                    }
+                }
             }
             else
             {

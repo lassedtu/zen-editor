@@ -25,6 +25,8 @@ int editor_init(Editor *ed, const char *filename)
     ed->search.query[0] = '\0';
     ed->search.query_len = 0;
 
+    selection_clear(&ed->selection);
+
     if (platform_terminal_init() != 0)
     {
         buffer_free(ed->buffer);
@@ -143,7 +145,8 @@ void editor_run(Editor *ed)
 
         // draw the buffer and cursor
         renderer_draw(ed->buffer, &ed->cursor, ed->screen_rows,
-                      ed->screen_cols, ed->scroll_offset, highlight);
+                      ed->screen_cols, ed->scroll_offset, highlight,
+                      ed->selection.active ? &ed->selection : NULL);
 
         if (ed->search.active)
         {

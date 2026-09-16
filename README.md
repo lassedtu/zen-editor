@@ -36,6 +36,9 @@ The binary is output to `build/ze`.
 | Enter      | Insert new line         |
 | Backspace  | Delete character before |
 | Delete     | Delete character at     |
+| Shift+Arrow | Select text            |
+| Shift+Home / Shift+End | Select to line start/end |
+| Ctrl+A     | Select all              |
 | Ctrl+Z     | Undo                    |
 | Ctrl+Y     | Redo                    |
 | Ctrl+F     | Search                  |
@@ -58,6 +61,7 @@ ze/
 │   ├── command.c       Command execution
 │   ├── keymap.c        Key-to-command translation
 │   ├── search.c        Buffer search (match finding, next/prev)
+│   ├── selection.c     Text selection state and region operations
 │   └── undo.c          Undo/redo history
 ├── include/
 │   ├── keys.h          Centralized key code definitions
@@ -85,8 +89,10 @@ See [ROADMAP.md](ROADMAP.md) for the full development plan. Current status:
 - [x] Phase 6 — Editor Commands
 - [x] Phase 7 — Undo and Redo
 - [x] Phase 8 — Search
-- [ ] Phase 9 — Configuration
-- [ ] Phase 10 — Syntax Highlighting
+- [x] Phase 9 — Text Selection
+- [ ] Phase 10 — Clipboard (Copy / Cut / Paste)
+- [ ] Phase 11 — Configuration
+- [ ] Phase 12 — Syntax Highlighting
 
 ## Contributing
 
