@@ -1,5 +1,6 @@
 #include "platform_fs.h"
 
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,13 +12,12 @@
  * implements file read/write using ginnOS syscalls:
  * - open(), close(), read(), write()
  * - lseek() for determining file size
- * - ftruncate() for overwriting files
- * - create() for creating new files
+ * - O_CREAT | O_TRUNC to create or overwrite a file
  */
 
 char *platform_fs_read_file(const char *path, int *out_len)
 {
-    int fd = open(path, 0);
+    int fd = open(path, O_RDONLY);
     if (fd < 0)
         return NULL;
 
@@ -53,21 +53,10 @@ char *platform_fs_read_file(const char *path, int *out_len)
 
 int platform_fs_write_file(const char *path, const char *data, int len)
 {
-    /* try to open existing file */
-    int fd = open(path, 0);
+    /* create the file, or empty it if it exists */
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0)
-    {
-        /* file doesn't exist — create it */
-        if (create(path) != 0)
-            return -1;
-        fd = open(path, 0);
-        if (fd < 0)
-            return -1;
-    }
-
-    /* truncate to zero and write fresh contents */
-    ftruncate(fd);
-    lseek(fd, 0, SEEK_SET);
+        return -1;
 
     int total = 0;
     while (total < len)

@@ -3,17 +3,17 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
 
 /*
- * We need ginnOS syscall declarations (write, read_event, ttyctl) but
- * unistd.h defines KEY_ARROW_UP etc. as macros that conflict with ze's
- * enum Key in keys.h. Instead we declare only what we need directly.
+ * We need ginnOS syscall declarations (write, read, ttyctl) but unistd.h
+ * defines KEY_ARROW_UP etc. as macros that conflict with ze's enum Key in
+ * keys.h. Instead we declare only what we need directly, with the libc
+ * types from sys/types.h (they are 64 bits wide on x86_64).
  */
 
 /* ginnOS syscall prototypes (from libc unistd.h) */
-typedef unsigned int size_t;
-typedef int ssize_t;
-
 ssize_t write(int fd, const void *buf, size_t count);
 ssize_t read(int fd, void *buf, size_t count);
 
@@ -71,9 +71,9 @@ static int ginnos_read_event(ginnos_key_event_t *event)
  * - read() for keyboard input (structured key events in raw mode)
  * - write() for terminal output (kernel console parses ANSI)
  *
- * ginnOS provides a VGA text-mode console (80x25) with an ANSI escape
- * sequence parser, so we emit standard ANSI sequences for cursor movement,
- * screen clearing, etc.
+ * The ginnOS console (VGA text or a framebuffer) parses ANSI escape
+ * sequences, so we emit standard ANSI sequences for cursor movement,
+ * screen clearing, etc. Its size comes from the TIOCGWINSZ ioctl.
  */
 
 /* --- Write buffer -------------------------------------------------------- */
@@ -124,7 +124,17 @@ void platform_terminal_cleanup(void)
 
 int platform_terminal_get_size(int *rows, int *cols)
 {
-    /* ginnOS VGA text mode is fixed at 80x25 */
+    /* the console size depends on the video mode (80x25 in VGA text mode,
+     * larger on a framebuffer); ask the terminal, and use 80x25 if it
+     * cannot say */
+    struct winsize ws;
+    if (ioctl(1, TIOCGWINSZ, &ws) == 0 && ws.ws_row > 0 && ws.ws_col > 0)
+    {
+        *rows = ws.ws_row;
+        *cols = ws.ws_col;
+        return 0;
+    }
+
     *rows = 25;
     *cols = 80;
     return 0;
@@ -197,6 +207,6 @@ void platform_terminal_flush(void)
 
 int platform_terminal_has_resized(void)
 {
-    /* ginnOS VGA text mode is fixed-size, never resizes */
+    /* the ginnOS console keeps its size until the next boot */
     return 0;
 }
