@@ -2,6 +2,7 @@
 #define ZE_KEYMAP_H
 
 #include "command.h"
+#include "config.h"
 
 /**
  * @file keymap.h
@@ -19,5 +20,19 @@
  * @return the corresponding Command. returns CMD_NONE if the key has no binding.
  */
 Command keymap_translate(int key);
+
+/**
+ * @brief translate a key code with the bindings of the user first.
+ *
+ * the function reads the Config bindings first. it returns the command from the
+ * Config when the key is in the binding table. it uses the built-in key map for
+ * a key that is not in the table. this lets the user change the bindings of the
+ * named commands and keep the movement and typing keys.
+ *
+ * @param cfg pointer to the Config with the bindings of the user.
+ * @param key the key code returned by platform_terminal_read_key().
+ * @return the corresponding Command, or CMD_NONE when the key has no binding.
+ */
+Command keymap_translate_config(const Config *cfg, int key);
 
 #endif /* ZE_KEYMAP_H */
